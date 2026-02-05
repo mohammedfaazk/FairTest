@@ -20,9 +20,8 @@ console.log('🚀 Deploying FairTest ENS Controller\n');
 const requiredEnvVars = ['SEPOLIA_RPC_URL', 'SEPOLIA_PRIVATE_KEY'];
 const missing = requiredEnvVars.filter(v => !process.env[v]);
 if (missing.length > 0) {
-    console.error('❌ Missing environment variables:', missing.join(', '));
-    console.log('   Copy .env.example to .env and fill in your values');
-    process.exit(1);
+    console.log('⚠️  Missing environment variables:', missing.join(', '));
+    console.log('   Using mock deployment for demo\n');
 }
 
 // ENS Subdomain Controller Contract
@@ -35,20 +34,25 @@ const CONTROLLER_ABI = [
 const CONTROLLER_BYTECODE = "0x608060405234801561001057600080fd5b50..."; // Simplified for demo
 
 async function main() {
-    // Connect to Sepolia
-    const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
-    const wallet = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY, provider);
-    
-    console.log('✓ Connected to Sepolia');
-    console.log(`✓ Deployer address: ${wallet.address}`);
-    
-    const balance = await provider.getBalance(wallet.address);
-    console.log(`✓ Balance: ${ethers.formatEther(balance)} ETH\n`);
-    
-    if (balance === 0n) {
-        console.error('❌ No Sepolia ETH in wallet');
-        console.log('   Get testnet ETH from: https://sepoliafaucet.com');
-        process.exit(1);
+    // Check if we have credentials
+    if (!process.env.SEPOLIA_RPC_URL || !process.env.SEPOLIA_PRIVATE_KEY) {
+        console.log('📝 Running in DEMO MODE (no testnet credentials)\n');
+    } else {
+        // Connect to Sepolia
+        const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+        const wallet = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY, provider);
+        
+        console.log('✓ Connected to Sepolia');
+        console.log(`✓ Deployer address: ${wallet.address}`);
+        
+        const balance = await provider.getBalance(wallet.address);
+        console.log(`✓ Balance: ${ethers.formatEther(balance)} ETH\n`);
+        
+        if (balance === 0n) {
+            console.error('❌ No Sepolia ETH in wallet');
+            console.log('   Get testnet ETH from: https://sepoliafaucet.com');
+            process.exit(1);
+        }
     }
     
     // For demo purposes, we'll use a mock deployment

@@ -1,12 +1,9 @@
 import { ethers } from 'ethers';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 class YellowSessionManager {
   constructor(config = {}) {
-    this.apiUrl = config.apiUrl || process.env.YELLOW_NETWORK_API_URL;
-    this.apiKey = config.apiKey || process.env.YELLOW_NETWORK_API_KEY;
+    this.apiUrl = config.apiUrl || (typeof process !== 'undefined' && process.env?.YELLOW_NETWORK_API_URL);
+    this.apiKey = config.apiKey || (typeof process !== 'undefined' && process.env?.YELLOW_NETWORK_API_KEY);
     this.sessions = new Map();
     this.sessionCounter = 0;
   }

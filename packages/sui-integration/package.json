@@ -1,0 +1,10 @@
+{
+  "name": "@fairtest/sui-integration",
+  "version": "1.0.0",
+  "description": "Sui blockchain integration for FairTest Protocol",
+  "main": "index.js",
+  "type": "module",
+  "keywords": ["sui", "blockchain", "fairtest"],
+  "author": "FairTest Team",
+  "license": "MIT"
+}
