@@ -13,8 +13,8 @@ class FairTestService {
     constructor() {
         this.yellow = new YellowSessionManager();
         this.payment = new PaymentFlow(this.yellow);
-        this.sui = new SuiStorageManager();
         this.ens = new ENSManager();
+        this.sui = new SuiStorageManager({ ensManager: this.ens });
         this.identity = new AnonymousIDManager();
         
         // Current user context
@@ -61,6 +61,16 @@ class FairTestService {
     }
 
     /**
+     * Get stored exam identity (for Take page after Instructions)
+     */
+    getExamIdentity(examId) {
+        const recovered = this.identity.recoverUID(examId);
+        if (recovered) return recovered;
+        if (this.currentIdentity && this.currentIdentity.examId === examId) return this.currentIdentity;
+        return null;
+    }
+
+    /**
      * CREATOR: Create and publish exam
      */
     async createExam(examData) {
@@ -92,11 +102,14 @@ class FairTestService {
             ensDomain: ensResult.subdomain
         });
         
-        // Step 4: Link ENS to Sui object
+        // Step 4: Link ENS to Sui object (metadata for getExam)
         console.log('[FairTest] Step 4: Linking ENS to Sui object...');
         await this.ens.setExamMetadata(ensResult.subdomain, suiResult.objectId, {
             suiObjectID: suiResult.objectId,
-            examId: suiResult.examId
+            examId: suiResult.examId,
+            title: examData.title,
+            description: examData.description ?? '',
+            questions: examData.questions ?? []
         });
         
         // Step 5: Settle Yellow payment
@@ -329,6 +342,13 @@ class FairTestService {
      */
     async getExamStats(examId) {
         return await this.sui.getExamStats(examId);
+    }
+
+    /**
+     * Get single exam by ID (for taking exam / loading questions)
+     */
+    async getExam(examId) {
+        return await this.sui.getExam(examId);
     }
 }
 
