@@ -10,6 +10,23 @@
  * Only FINAL_HASH stored on blockchain
  */
 
+async function getRandomBytes(length) {
+    const arr = new Uint8Array(length);
+    const c = (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.getRandomValues)
+        ? globalThis.crypto
+        : (typeof crypto !== 'undefined' && crypto.getRandomValues)
+            ? crypto
+            : null;
+    if (c) {
+        c.getRandomValues(arr);
+    } else {
+        const nodeCrypto = await import('node:crypto');
+        const buf = nodeCrypto.randomBytes(length);
+        arr.set(buf);
+    }
+    return arr;
+}
+
 class AnonymousIDManager {
     /**
      * Generate anonymous exam identity
@@ -18,11 +35,10 @@ class AnonymousIDManager {
      */
     async generateExamIdentity(walletAddress, examId) {
         // Step 1: Generate random UID (NOT derived from wallet)
-        const randomBytes = new Uint8Array(32);
-        crypto.getRandomValues(randomBytes);
-        
+        const randomBytes = await getRandomBytes(32);
         const timestamp = Date.now();
-        const salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        const saltArr = await getRandomBytes(16);
+        const salt = Array.from(saltArr)
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
         
@@ -137,6 +153,9 @@ class AnonymousIDManager {
      * Only FINAL_HASH included, never wallet address
      */
     createSubmissionPayload(identityData, examId, answers) {
+        if (!identityData || typeof identityData !== 'object' || !identityData.finalHash) {
+            throw new Error('createSubmissionPayload requires full identity object from generateExamIdentity (with .finalHash)');
+        }
         const answerHash = this._simpleSha256(JSON.stringify(answers));
         
         const payload = {
