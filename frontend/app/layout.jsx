@@ -1,6 +1,5 @@
-import SuiProviders from './SuietProviders';
-import '@suiet/wallet-kit/style.css';
 import './globals.css';
+import SuiProviders from './SuietProviders';
 
 export const metadata = {
   title: 'FairTest Protocol',
@@ -16,7 +15,9 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body>
-        <SuiProviders>{children}</SuiProviders>
+        <SuiProviders>
+          {children}
+        </SuiProviders>
       </body>
     </html>
   );

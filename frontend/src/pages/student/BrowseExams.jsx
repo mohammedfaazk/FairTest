@@ -23,7 +23,7 @@ function BrowseExams() {
 
     const handleRegister = async (exam) => {
         if (!fairTestService.currentWallet) {
-            setError('Please connect your wallet first.');
+            setError('Please connect your wallet to register for exams. Click "Connect Wallet" in the top-right corner.');
             return;
         }
         setIsProcessing(true);
@@ -46,6 +46,27 @@ function BrowseExams() {
             <div className="browse-exams">
                 <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Browse Exams</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Loading exams...</p>
+            </div>
+        );
+    }
+
+    if (exams.length === 0 && !error) {
+        return (
+            <div className="browse-exams">
+                <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Browse Exams</h1>
+                <div className="glass-card" style={{ textAlign: 'center', padding: '4rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
+                    <h2 style={{ marginBottom: '1rem' }}>No Exams Available Yet</h2>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+                        No exams have been created yet. Switch to Creator role to create your first exam!
+                    </p>
+                    <button 
+                        onClick={() => router.push('/creator/create')}
+                        className="btn-primary"
+                    >
+                        Create First Exam
+                    </button>
+                </div>
             </div>
         );
     }

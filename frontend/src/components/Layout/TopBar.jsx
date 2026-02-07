@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConnectButton, useWallet } from '@suiet/wallet-kit';
 import fairTestService from '../../services/FairTestService';
@@ -8,15 +8,21 @@ import './TopBar.css';
 
 const TopBar = ({ title, role, onRoleChange }) => {
   const router = useRouter();
-  const { address } = useWallet();
+  const walletKit = useWallet();
+  const { address, connected, account } = walletKit;
 
   useEffect(() => {
-    if (address) {
-      fairTestService.connectWallet(address);
+    console.log('[TopBar] Wallet state:', { address, connected, account, walletKit });
+    
+    if (address && connected) {
+      // Pass wallet kit instance for transaction signing
+      fairTestService.connectWallet(address, walletKit);
+      console.log('[TopBar] ✅ Wallet connected:', address);
     } else {
-      fairTestService.connectWallet(null);
+      fairTestService.connectWallet(null, null);
+      console.log('[TopBar] ❌ Wallet disconnected');
     }
-  }, [address]);
+  }, [address, connected, account, walletKit]);
 
   const handleRoleChange = (newRole) => {
     onRoleChange(newRole);
@@ -48,7 +54,7 @@ const TopBar = ({ title, role, onRoleChange }) => {
         </button>
         
         <div className="wallet-connect-wrapper">
-          <ConnectButton label="Connect Wallet" />
+          <ConnectButton />
         </div>
       </div>
     </div>

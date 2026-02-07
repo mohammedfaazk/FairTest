@@ -14,8 +14,16 @@ import { decodeSuiPrivateKey } from '@mysten/sui.js/cryptography';
 const SUI_CLOCK_OBJECT_ID = '0x6';
 
 function getEnv(key) {
-    if (typeof process !== 'undefined' && process.env && process.env[key] != null) return process.env[key];
-    if (typeof globalThis !== 'undefined' && globalThis.__FAIRTEST_ENV__?.[key] != null) return globalThis.__FAIRTEST_ENV__[key];
+    // Check Next.js public env variables first (browser)
+    if (typeof process !== 'undefined' && process.env) {
+        const nextPublicKey = `NEXT_PUBLIC_${key}`;
+        if (process.env[nextPublicKey] != null) return process.env[nextPublicKey];
+        if (process.env[key] != null) return process.env[key];
+    }
+    // Check global fallback
+    if (typeof globalThis !== 'undefined' && globalThis.__FAIRTEST_ENV__?.[key] != null) {
+        return globalThis.__FAIRTEST_ENV__[key];
+    }
     return undefined;
 }
 
@@ -62,11 +70,23 @@ export default class SuiStorageManager {
         this.network = config.network ?? getEnv('SUI_NETWORK') ?? 'testnet';
         this.rpcUrl = config.rpcUrl ?? getEnv('SUI_RPC_URL') ?? getFullnodeUrl(this.network);
         this.ensManager = config.ensManager ?? null;
+        
+        // Support both wallet (browser) and private key (server) signing
+        this.wallet = config.wallet ?? null; // Suiet wallet instance
+        
         const pk = config.privateKey ?? getEnv('SUI_PRIVATE_KEY');
         this.signer = pk ? createSigner(pk) : null;
         
         // Initialize client lazily (only when packageId is available)
         this._client = null;
+    }
+
+    /**
+     * Set wallet instance for browser-based transaction signing
+     */
+    setWallet(walletInstance) {
+        this.wallet = walletInstance;
+        console.log('[Sui] Wallet instance set for transaction signing');
     }
 
     _requirePackageId() {
@@ -84,32 +104,82 @@ export default class SuiStorageManager {
     }
 
     async _executeTx(transaction) {
-        if (!this.signer) throw new Error('SuiStorageManager: SUI_PRIVATE_KEY required for writes');
-        const result = await this.client.signAndExecuteTransactionBlock({
-            transactionBlock: transaction,
-            signer: this.signer,
-            options: { showObjectChanges: true }
-        });
-        if (result.effects?.status?.status !== 'success') {
-            const err = result.effects?.status?.error ?? result.effects?.status;
-            throw new Error(err ? JSON.stringify(err) : 'Transaction failed');
+        // Use wallet if available (browser), otherwise use signer (server)
+        if (this.wallet && typeof window !== 'undefined') {
+            try {
+                console.log('[Sui] Signing with connected wallet...');
+                
+                // Use signAndExecuteTransactionBlock from wallet kit
+                const result = await this.wallet.signAndExecuteTransactionBlock({
+                    transactionBlock: transaction,
+                    options: { showObjectChanges: true, showEffects: true }
+                });
+                
+                if (result.effects?.status?.status !== 'success') {
+                    const err = result.effects?.status?.error ?? result.effects?.status;
+                    console.error('[Sui] Transaction failed:', JSON.stringify(result.effects, null, 2));
+                    throw new Error(err ? JSON.stringify(err) : 'Transaction failed');
+                }
+                
+                console.log('[Sui] ✅ Transaction successful!');
+                return result;
+            } catch (error) {
+                console.error('[Sui] Wallet transaction error:', error);
+                throw error;
+            }
         }
-        return result;
+        
+        // Fallback to server-side signing
+        if (!this.signer) throw new Error('SuiStorageManager: Wallet not connected or SUI_PRIVATE_KEY required');
+        
+        try {
+            console.log('[Sui] Signing with server private key...');
+            const result = await this.client.signAndExecuteTransactionBlock({
+                transactionBlock: transaction,
+                signer: this.signer,
+                options: { showObjectChanges: true, showEffects: true }
+            });
+            
+            if (result.effects?.status?.status !== 'success') {
+                const err = result.effects?.status?.error ?? result.effects?.status;
+                console.error('[Sui] Transaction failed:', JSON.stringify(result.effects, null, 2));
+                throw new Error(err ? JSON.stringify(err) : 'Transaction failed');
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('[Sui] Transaction error:', error);
+            throw error;
+        }
     }
 
     async storeExam(examData) {
         this._requirePackageId();
         const examIdStr = `exam_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
         const examIdBytes = Array.from(new TextEncoder().encode(examIdStr));
-        const ensName = examData.ensDomain ?? '';
+        const examTitle = examData.title || '';
         const examFee = BigInt(Math.floor(Number(examData.fee ?? 0) * 1e9));
+        const platformFee = BigInt(Math.floor(0.01 * 1e9)); // 0.01 SUI platform fee
 
         const tx = new TransactionBlock();
+        tx.setGasBudget(100000000);
+        
+        // REAL PAYMENT: Transfer platform fee to platform wallet
+        const platformWallet = process.env.NEXT_PUBLIC_PLATFORM_WALLET_ADDRESS || 
+                              (typeof process !== 'undefined' && process.env?.PLATFORM_WALLET_ADDRESS);
+        
+        if (platformWallet && platformWallet !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+            console.log('[Sui] Transferring platform fee:', 0.01, 'SUI to', platformWallet);
+            const [coin] = tx.splitCoins(tx.gas, [tx.pure(platformFee)]);
+            tx.transferObjects([coin], tx.pure(platformWallet));
+        }
+        
+        // Create exam on blockchain
         tx.moveCall({
             target: `${this.packageId}::exam::create_exam`,
             arguments: [
                 tx.pure(bcs.vector(bcs.U8).serialize(examIdBytes)),
-                tx.pure.string(ensName),
+                tx.pure.string(examTitle),
                 tx.pure.u64(examFee),
                 tx.object(SUI_CLOCK_OBJECT_ID)
             ]
@@ -121,8 +191,19 @@ export default class SuiStorageManager {
         if (!objectId) throw new Error('Failed to get created exam object ID');
 
         const examId = objectId;
-        console.log('[Sui] Exam stored on blockchain:', examId);
+        console.log('[Sui] ✅ Exam stored on blockchain:', examId);
+        console.log('[Sui] ✅ Platform fee paid:', 0.01, 'SUI');
         console.log('[Sui] Tx digest:', txDigest);
+
+        // Store exam ID in local storage for browsing
+        if (typeof window !== 'undefined' && window.localStorage) {
+            const stored = localStorage.getItem('fairtest_exam_ids');
+            const examIds = stored ? JSON.parse(stored) : [];
+            if (!examIds.includes(examId)) {
+                examIds.push(examId);
+                localStorage.setItem('fairtest_exam_ids', JSON.stringify(examIds));
+            }
+        }
 
         return {
             success: true,
@@ -132,10 +213,46 @@ export default class SuiStorageManager {
         };
     }
 
+    async registerForExam({ examId, studentWallet, examFee, creatorWallet }) {
+        this._requirePackageId();
+        
+        console.log('[Sui] Registering for exam:', examId);
+        console.log('[Sui] Student:', studentWallet);
+        console.log('[Sui] Fee:', examFee, 'SUI');
+        console.log('[Sui] Creator:', creatorWallet);
+        
+        const feeAmount = BigInt(Math.floor(Number(examFee) * 1e9));
+        
+        const tx = new TransactionBlock();
+        tx.setGasBudget(100000000);
+        
+        // REAL PAYMENT: Transfer exam fee to creator
+        console.log('[Sui] Transferring exam fee:', examFee, 'SUI to creator');
+        const [coin] = tx.splitCoins(tx.gas, [tx.pure(feeAmount)]);
+        tx.transferObjects([coin], tx.pure(creatorWallet));
+        
+        const result = await this._executeTx(tx);
+        const txDigest = getTxDigest(result);
+        
+        console.log('[Sui] ✅ Registration complete');
+        console.log('[Sui] ✅ Exam fee paid:', examFee, 'SUI');
+        console.log('[Sui] Tx digest:', txDigest);
+        
+        return {
+            success: true,
+            txDigest: txDigest ?? undefined
+        };
+    }
+
     _parseExamObject(obj) {
-        const content = obj.data?.content;
-        if (!content || content.dataType !== 'moveObject') return null;
+        // obj is already the data object from getObject response
+        const content = obj.content;
+        if (!content || content.dataType !== 'moveObject') {
+            console.error('[Sui] Invalid object structure:', JSON.stringify(obj, null, 2));
+            return null;
+        }
         const fields = content.fields ?? {};
+        console.log('[Sui] Parsing exam fields:', JSON.stringify(fields, null, 2));
         return {
             examId: fields.exam_id ? bytesToHex(fields.exam_id) : null,
             creator: fields.creator ?? null,
@@ -194,22 +311,46 @@ export default class SuiStorageManager {
     }
 
     async getAllExams() {
-        if (!this.ensManager) {
-            throw new Error('ENS Manager not configured. Cannot retrieve exam list without ENS.');
-        }
-        const list = await this.ensManager.getExamList();
-        const exams = [];
-        for (const e of list) {
-            if (!e.examId) continue;
-            try {
-                const exam = await this.getExam(e.examId);
-                if (exam.status === 'active') exams.push(exam);
-            } catch (error) {
-                console.error(`[Sui] Failed to load exam ${e.examId}:`, error.message);
-                throw new Error(`Failed to load exam ${e.examId} from Sui: ${error.message}`);
+        this._requirePackageId();
+        
+        try {
+            console.log('[Sui] Loading exams from local storage...');
+            
+            // Get exam IDs from local storage (stored when exams are created)
+            const examIds = [];
+            if (typeof window !== 'undefined' && window.localStorage) {
+                const stored = localStorage.getItem('fairtest_exam_ids');
+                if (stored) {
+                    examIds.push(...JSON.parse(stored));
+                }
             }
+            
+            if (examIds.length === 0) {
+                console.log('[Sui] ⚠️  No exams found in local storage');
+                console.log('[Sui] Create an exam first, or enter exam ID manually');
+                return [];
+            }
+            
+            console.log('[Sui] Found', examIds.length, 'exam IDs, loading details...');
+            
+            const exams = [];
+            for (const examId of examIds) {
+                try {
+                    const exam = await this.getExam(examId);
+                    if (exam && exam.status === 'active') {
+                        exams.push(exam);
+                    }
+                } catch (error) {
+                    console.warn('[Sui] Failed to load exam', examId, ':', error.message);
+                }
+            }
+            
+            console.log('[Sui] Loaded', exams.length, 'active exams');
+            return exams;
+        } catch (error) {
+            console.error('[Sui] Error loading exams:', error);
+            return [];
         }
-        return exams;
     }
 
     _bytesArg(bytes) {

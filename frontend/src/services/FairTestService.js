@@ -1,64 +1,52 @@
 /**
- * FairTest Service - Real integration with Yellow, Sui, and ENS
- * NO DUMMY DATA - All data comes from actual integrations
+ * FairTest Service - Sui-only implementation
+ * Payments, storage, and identity all on Sui blockchain
  */
 
-import YellowSessionManager from '../../../packages/yellow-integration/YellowSessionManager.js';
-import PaymentFlow from '../../../packages/yellow-integration/PaymentFlow.js';
 import SuiStorageManager from '../../../packages/sui-integration/SuiStorageManager.js';
-import ENSManager from '../../../packages/ens-integration/ENSManager.js';
 import AnonymousIDManager from '../../../packages/identity/AnonymousIDManager.js';
-import { ethers } from 'ethers';
 
 class FairTestService {
     constructor() {
-        // Configure Yellow Network with getSigner
-        this.yellow = new YellowSessionManager({
-            getSigner: async (walletAddress) => {
-                // Check if we're in browser with wallet
-                if (typeof window !== 'undefined' && window.ethereum) {
-                    try {
-                        // Request account access
-                        await window.ethereum.request({ method: 'eth_requestAccounts' });
-                        
-                        // Create provider and signer
-                        const provider = new ethers.BrowserProvider(window.ethereum);
-                        const signer = await provider.getSigner();
-                        
-                        console.log('[Yellow] Signer created for:', await signer.getAddress());
-                        return signer;
-                    } catch (error) {
-                        console.error('[Yellow] Failed to get signer:', error);
-                        throw new Error('Failed to connect wallet for Yellow Network');
-                    }
-                }
-                
-                // Fallback: No wallet available
-                console.warn('[Yellow] No wallet detected, Yellow Network will not work');
-                return null;
-            }
-        });
+        console.log('[FairTest] ✅ Sui-only mode');
+        console.log('[FairTest] Payments via Slush wallet');
         
-        this.payment = new PaymentFlow(this.yellow);
-        this.ens = new ENSManager();
-        this.sui = new SuiStorageManager({ ensManager: this.ens });
+        this.sui = new SuiStorageManager({ 
+            packageId: process.env.NEXT_PUBLIC_SUI_PACKAGE_ID,
+            network: process.env.NEXT_PUBLIC_SUI_NETWORK || 'testnet',
+            rpcUrl: process.env.NEXT_PUBLIC_SUI_RPC_URL,
+            privateKey: process.env.NEXT_PUBLIC_SUI_PRIVATE_KEY
+        });
         this.identity = new AnonymousIDManager();
         
         // Current user context
         this.currentWallet = null;
+        this.currentWalletInstance = null; // Store wallet instance for signing
         this.currentUID = null;
     }
 
     /**
-     * Connect wallet and generate anonymous exam identity
-     * LAYER 1: Payment Identity (wallet) - for payments only
+     * Connect wallet (Slush for payments AND identity)
+     * LAYER 1: Payment Identity (Sui wallet) - for payments
      * LAYER 2: Exam Identity (FINAL_HASH) - for submissions/evaluation
      */
-    async connectWallet(walletAddress) {
+    async connectWallet(walletAddress, walletInstance = null) {
         this.currentWallet = walletAddress;
+        this.currentWalletInstance = walletInstance;
         
-        console.log('[FairTest] Wallet connected (Payment Identity):', walletAddress);
-        console.log('[FairTest] ⚠️  Wallet used ONLY for payments, NEVER for evaluation');
+        // Update SuiStorageManager with wallet instance for signing
+        if (walletInstance) {
+            this.sui.wallet = walletInstance;
+            console.log('[FairTest] ✅ Wallet instance connected for transaction signing');
+            console.log('[FairTest] Wallet address:', walletAddress);
+            console.log('[FairTest] Wallet instance:', walletInstance);
+        } else {
+            console.log('[FairTest] ⚠️  Wallet disconnected or instance not provided');
+        }
+        
+        console.log('[FairTest] Slush connected (Payment Identity):', walletAddress);
+        console.log('[FairTest] ⚠️  Wallet used for payments, NEVER for evaluation');
+        console.log('[FairTest] currentWallet set to:', this.currentWallet);
         
         return {
             wallet: this.currentWallet
@@ -99,105 +87,25 @@ class FairTestService {
 
     /**
      * CREATOR: Create and publish exam
+     * Payment via Sui, storage on Sui
      */
     async createExam(examData) {
         if (!this.currentWallet) throw new Error('Wallet not connected');
         
-        try {
-            // Step 1: Create Yellow Network payment session for listing fee
-            console.log('[FairTest] Step 1: Creating Yellow payment session...');
-            const listingFee = 0.1; // Platform listing fee
-            const paymentResult = await this.payment.processListingPayment({
-                creatorWallet: this.currentWallet,
-                listingFee,
-                examMetadata: { title: examData.title }
-            });
-            console.log('[FairTest] ✅ Yellow session created:', paymentResult.sessionId);
-            
-            // Step 2: Create ENS subdomain (will fail if domain not owned, but continue)
-            let ensDomain = `${examData.title.toLowerCase().replace(/\s+/g, '-')}.fairtest.eth`;
-            try {
-                console.log('[FairTest] Step 2: Creating ENS subdomain...');
-                const ensResult = await this.ens.createExamSubdomain(examData.title, {
-                    examName: examData.title,
-                    creatorWallet: this.currentWallet,
-                    examFee: examData.fee
-                });
-                ensDomain = ensResult.subdomain;
-                console.log('[FairTest] ✅ ENS subdomain created:', ensDomain);
-            } catch (ensError) {
-                console.warn('[FairTest] ⚠️ ENS subdomain creation failed:', ensError.message);
-                console.log('[FairTest] Continuing with mock ENS domain:', ensDomain);
-            }
-            
-            // Step 3: Store exam on Sui blockchain
-            console.log('[FairTest] Step 3: Storing exam on Sui blockchain...');
-            const suiResult = await this.sui.storeExam({
-                ...examData,
-                creatorWallet: this.currentWallet,
-                yellowSessionId: paymentResult.sessionId,
-                ensDomain: ensDomain
-            });
-            
-            // Step 4: Link ENS to Sui object (skip if ENS failed)
-            try {
-                console.log('[FairTest] Step 4: Linking ENS to Sui object...');
-                await this.ens.setExamMetadata(ensDomain, suiResult.objectId, {
-                    suiObjectID: suiResult.objectId,
-                    examId: suiResult.examId,
-                    title: examData.title,
-                    description: examData.description ?? '',
-                    questions: examData.questions ?? []
-                });
-                console.log('[FairTest] ✅ ENS metadata set');
-            } catch (ensError) {
-                console.warn('[FairTest] ⚠️ ENS metadata update failed:', ensError.message);
-            }
-            
-            // Step 5: Settle Yellow payment
-            console.log('[FairTest] Step 5: Settling Yellow payment...');
-            await this.yellow.settleSession(paymentResult.sessionId);
-            console.log('[FairTest] ✅ Yellow payment settled');
-            
-            console.log('[FairTest] ✅ Exam created successfully!');
-            
-            return {
-                examId: suiResult.examId,
-                ensDomain: ensDomain,
-                suiObjectId: suiResult.objectId,
-                txDigest: suiResult.txDigest,
-                yellowSessionId: paymentResult.sessionId
-            };
-        } catch (error) {
-            console.error('[FairTest] Error creating exam:', error);
-            throw error;
-        }
-    }
-            yellowSessionId: paymentResult.sessionId,
-            ensDomain: ensResult.subdomain
-        });
+        console.log('[FairTest] Creating exam on Sui blockchain...');
         
-        // Step 4: Link ENS to Sui object (metadata for getExam)
-        console.log('[FairTest] Step 4: Linking ENS to Sui object...');
-        await this.ens.setExamMetadata(ensResult.subdomain, suiResult.objectId, {
-            suiObjectID: suiResult.objectId,
-            examId: suiResult.examId,
-            title: examData.title,
-            description: examData.description ?? '',
-            questions: examData.questions ?? []
+        // Store exam on Sui blockchain with platform fee payment
+        const suiResult = await this.sui.storeExam({
+            ...examData,
+            creatorWallet: this.currentWallet
         });
-        
-        // Step 5: Settle Yellow payment
-        console.log('[FairTest] Step 5: Settling Yellow payment...');
-        await this.yellow.settleSession(paymentResult.sessionId);
         
         console.log('[FairTest] ✅ Exam created successfully!');
         
         return {
             examId: suiResult.examId,
-            ensDomain: ensResult.subdomain,
             suiObjectId: suiResult.objectId,
-            yellowSessionId: paymentResult.sessionId
+            txDigest: suiResult.txDigest
         };
     }
 
@@ -233,37 +141,36 @@ class FairTestService {
      * STUDENT: Browse available exams
      */
     async browseExams() {
-        // TEMPORARY: Return empty array since ENS not configured
-        // In production, this would query ENS for exam list
-        console.log('[FairTest] Browse exams: ENS not configured, returning empty list');
-        console.log('[FairTest] To see exams, use exam ID directly from creator');
-        return [];
+        console.log('[FairTest] Browsing exams from Sui blockchain...');
+        const allExams = await this.sui.getAllExams();
+        console.log('[FairTest] Found', allExams.length, 'exams');
+        return allExams;
     }
 
     /**
      * STUDENT: Register for exam
+     * Payment via Sui to creator
      */
     async registerForExam(examId) {
         if (!this.currentWallet) throw new Error('Wallet not connected');
         
         const exam = await this.sui.getExam(examId);
         
-        // Create Yellow payment session for exam fee
-        console.log('[FairTest] Creating Yellow payment session for registration...');
-        const paymentResult = await this.payment.processRegistrationPayment({
-            studentWallet: this.currentWallet,
+        // Register and pay exam fee on Sui
+        console.log('[FairTest] Registering for exam on Sui...');
+        const result = await this.sui.registerForExam({
             examId,
+            studentWallet: this.currentWallet,
             examFee: parseFloat(exam.fee),
             creatorWallet: exam.creator
         });
         
         console.log('[FairTest] ✅ Registered for exam!');
-        console.log('[FairTest] Yellow Session:', paymentResult.sessionId);
         
         return {
             examId,
-            yellowSessionId: paymentResult.sessionId,
-            registered: true
+            registered: true,
+            txDigest: result.txDigest
         };
     }
 

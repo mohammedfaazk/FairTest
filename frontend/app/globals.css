@@ -1,3 +1,6 @@
+/* Suiet Wallet Kit styles */
+@import '@suiet/wallet-kit/style.css';
+
 /* Design system & app styles - load first */
 @import '../src/styles/index.css';
 @import '../src/styles/design-system.css';

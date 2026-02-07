@@ -60,11 +60,18 @@ function CreateExam() {
 
     const handlePublish = async () => {
         if (!validateExam()) return;
+        
+        console.log('[CreateExam] Checking wallet...');
+        console.log('[CreateExam] fairTestService.currentWallet:', fairTestService.currentWallet);
+        console.log('[CreateExam] fairTestService.currentWalletInstance:', fairTestService.currentWalletInstance);
+        
         if (!fairTestService.currentWallet) {
-            setValidationErrors(['Please connect your wallet first.']);
+            setValidationErrors(['Please connect your wallet first. Click "Connect Wallet" in the top-right corner.']);
+            console.error('[CreateExam] ❌ Wallet not connected!');
             return;
         }
 
+        console.log('[CreateExam] ✅ Wallet connected, proceeding...');
         setStep(4);
         setIsProcessing(true);
         setValidationErrors([]);

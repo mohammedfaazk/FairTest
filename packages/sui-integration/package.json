@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "dependencies": {
-    "@mysten/sui": "1.2.0"
+    "@mysten/sui": "1.2.0",
+    "@mysten/sui.js": "^0.50.0"
   },
   "keywords": [
     "sui",
