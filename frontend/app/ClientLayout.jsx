@@ -13,16 +13,22 @@ function getRoleFromPath(pathname) {
 const TITLES = {
   '/creator': 'Creator Dashboard',
   '/creator/create': 'Create New Exam',
+  '/creator/exams': 'My Exams',
+  '/creator/analytics': 'Analytics',
   '/student': 'Student Dashboard',
   '/student/browse': 'Browse Exams',
+  '/student/registered': 'My Exams',
   '/student/results': 'My Results',
   '/evaluator': 'Evaluator Dashboard',
+  '/evaluator/pending': 'Pending Grading',
+  '/evaluator/completed': 'Completed',
 };
 
 // Dynamic exam routes - match /student/exam/:id/instructions or /student/exam/:id/take
 function getTitleFromPath(pathname) {
   if (pathname?.match(/\/student\/exam\/[^/]+\/instructions/)) return 'Exam Instructions';
   if (pathname?.match(/\/student\/exam\/[^/]+\/take/)) return 'Take Exam';
+  if (pathname?.match(/\/evaluator\/exam\/[^/]+\/grade/)) return 'Grade Exam';
   return null;
 }
 

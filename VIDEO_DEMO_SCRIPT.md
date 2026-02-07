@@ -13,7 +13,7 @@
 
 ### Environment Setup
 - [ ] Project running locally (`npm run dev`)
-- [ ] Browser open at `http://localhost:5173`
+- [ ] Browser open at `http://localhost:3000`
 - [ ] Console open (F12) to show logs
 - [ ] Screen recording software ready
 - [ ] Microphone tested

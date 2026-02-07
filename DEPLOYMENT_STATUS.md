@@ -4,9 +4,9 @@
 
 ### 🌐 Frontend Application
 - **Status**: ✅ Running
-- **URL**: http://localhost:5174/
-- **Framework**: React + Vite
-- **Features**: Creator, Student, and Evaluator dashboards
+- **URL**: http://localhost:3000/
+- **Framework**: Next.js 14 (App Router)
+- **Features**: Creator, Student, and Evaluator dashboards; Suiet wallet; exam instructions → take flow; evaluator grade page
 
 ### 🟡 Yellow Network Integration
 - **Status**: ✅ Deployed (Mock)
@@ -67,7 +67,7 @@ To deploy to real testnets:
 
 | Component | Status | Network | Notes |
 |-----------|--------|---------|-------|
-| Frontend | ✅ Live | Local | http://localhost:5174/ |
+| Frontend | ✅ Live | Local | http://localhost:3000/ |
 | Yellow Network | ✅ Mock | Demo | Payment sessions working |
 | ENS | ✅ Mock | Demo | Subdomain creation working |
 | Sui | ✅ Mock | Demo | Storage operations working |
@@ -76,4 +76,4 @@ To deploy to real testnets:
 
 ## 🎬 Ready for Demo!
 
-Your FairTest Protocol is fully functional and ready for the hackathon video. Open http://localhost:5174/ to start exploring!
+Your FairTest Protocol is fully functional and ready for the hackathon video. Run `npm run dev` from the repo root and open http://localhost:3000/ to start exploring. Set `NEXT_PUBLIC_DEMO_MODE=true` in `frontend/.env.local` to show the Demo Mode banner.

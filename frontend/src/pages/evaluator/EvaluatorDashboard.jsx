@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import fairTestService from '../../services/FairTestService';
 import AutoEvaluator from '../../../../packages/core/AutoEvaluator';
 
@@ -131,6 +132,9 @@ function EvaluatorDashboard() {
                             <option key={ex.examId} value={ex.examId}>{ex.title}</option>
                         ))}
                     </select>
+                    {selectedExamId && (
+                        <Link href={`/evaluator/exam/${selectedExamId}/grade`} style={{ marginLeft: '1rem', color: 'var(--primary)', fontWeight: 600 }}>Open grade page →</Link>
+                    )}
                 </div>
             )}
 
