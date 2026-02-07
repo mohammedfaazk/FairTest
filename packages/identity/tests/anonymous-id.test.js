@@ -3,31 +3,33 @@ import assert from 'node:assert';
 import AnonymousIDManager from '../AnonymousIDManager.js';
 
 describe('Anonymous Identity System', () => {
-    it('should generate unique UID', () => {
+    it('should generate unique UID via generateExamIdentity', async () => {
         const idManager = new AnonymousIDManager();
-        const uid1 = idManager.generateUID('0xabc', 'exam-1');
-        const uid2 = idManager.generateUID('0xabc', 'exam-1');
+        const uid1 = await idManager.generateExamIdentity('0xabc', 'exam-1');
+        const uid2 = await idManager.generateExamIdentity('0xabc', 'exam-1');
         
         assert.notEqual(uid1.uid, uid2.uid, 'UIDs should be unique due to random salt');
         assert.ok(uid1.uidHash);
+        assert.ok(uid1.finalHash);
         console.log('✓ UID generated:', uid1.uid.substring(0, 16) + '...');
     });
 
-    it('should create UID_HASH that hides wallet address', () => {
+    it('should create FINAL_HASH that hides wallet address', async () => {
         const idManager = new AnonymousIDManager();
         const walletAddress = '0x1234567890abcdef';
-        const uidData = idManager.generateUID(walletAddress, 'exam-1');
+        const uidData = await idManager.generateExamIdentity(walletAddress, 'exam-1');
         
         assert.ok(!uidData.uidHash.includes(walletAddress));
-        console.log('✓ UID_HASH does not contain wallet address');
+        assert.ok(!uidData.finalHash.includes(walletAddress));
+        console.log('✓ FINAL_HASH does not contain wallet address');
     });
 
-    it('should pass privacy audit', () => {
+    it('should pass privacy audit', async () => {
         const idManager = new AnonymousIDManager();
         const walletAddress = '0x1234567890abcdef';
-        const uidData = idManager.generateUID(walletAddress, 'exam-1');
+        const uidData = await idManager.generateExamIdentity(walletAddress, 'exam-1');
         const submission = idManager.createSubmissionPayload(
-            uidData.uidHash,
+            uidData,
             'exam-1',
             { q1: 'B', q2: 'A' }
         );
@@ -37,16 +39,16 @@ describe('Anonymous Identity System', () => {
         console.log('✓ Privacy audit passed - no wallet address in submission');
     });
 
-    it('should create submission payload with answer hash', () => {
+    it('should create submission payload with answer hash', async () => {
         const idManager = new AnonymousIDManager();
-        const uidData = idManager.generateUID('0xabc', 'exam-1');
+        const uidData = await idManager.generateExamIdentity('0xabc', 'exam-1');
         const payload = idManager.createSubmissionPayload(
-            uidData.uidHash,
+            uidData,
             'exam-1',
             { q1: 'B', q2: 'A', q3: 'C' }
         );
         
-        assert.ok(payload.uidHash);
+        assert.ok(payload.finalHash);
         assert.ok(payload.answerHash);
         assert.ok(payload.timestamp);
         console.log('✓ Submission payload created with answer hash');

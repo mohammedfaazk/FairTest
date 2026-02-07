@@ -1,248 +1,476 @@
 /**
- * Sui Blockchain Storage Manager
- * Handles exam, submission, and result storage on Sui blockchain
+ * Sui Blockchain Storage Manager - Real Sui integration
+ * Uses deployed Move contracts (exam, submission, result) on Sui testnet.
+ * No in-memory Maps; real object IDs and transaction digests from chain.
  */
 
-class SuiStorageManager {
+import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
+import { Transaction } from '@mysten/sui/transactions';
+import { bcs } from '@mysten/sui/bcs';
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Secp256k1Keypair } from '@mysten/sui/keypairs/secp256k1';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
+
+const SUI_CLOCK_OBJECT_ID = '0x6';
+
+function getEnv(key) {
+    if (typeof process !== 'undefined' && process.env && process.env[key] != null) return process.env[key];
+    if (typeof globalThis !== 'undefined' && globalThis.__FAIRTEST_ENV__?.[key] != null) return globalThis.__FAIRTEST_ENV__[key];
+    return undefined;
+}
+
+function hexToBytes(hex) {
+    const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+    if (h.length % 2) throw new Error('Invalid hex length');
+    const bytes = new Uint8Array(h.length / 2);
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+    return bytes;
+}
+
+function bytesToHex(bytes) {
+    return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function createSigner(privateKey) {
+    if (!privateKey) return null;
+    const key = privateKey.trim();
+    if (key.startsWith('suiprivkey')) {
+        const { schema, secretKey } = decodeSuiPrivateKey(key);
+        if (schema === 'ED25519') return Ed25519Keypair.fromSecretKey(secretKey);
+        if (schema === 'Secp256k1') return Secp256k1Keypair.fromSecretKey(secretKey);
+        throw new Error(`Unsupported key scheme: ${schema}`);
+    }
+    const bytes = hexToBytes(key);
+    if (bytes.length === 32) return Ed25519Keypair.fromSecretKey(bytes);
+    if (bytes.length === 33) return Secp256k1Keypair.fromSecretKey(bytes);
+    throw new Error('Invalid private key length');
+}
+
+function getCreatedObjectId(result) {
+    const changes = result.objectChanges ?? [];
+    const created = changes.find(c => c.type === 'created');
+    return created ? created.objectId : null;
+}
+
+function getTxDigest(result) {
+    return result.digest ?? null;
+}
+
+export default class SuiStorageManager {
     constructor(config = {}) {
-        this.packageId = config.packageId || process.env.SUI_PACKAGE_ID;
-        this.network = config.network || process.env.SUI_NETWORK || 'testnet';
-        this.rpcUrl = config.rpcUrl || `https://fullnode.${this.network}.sui.io:443`;
+        this.packageId = config.packageId ?? getEnv('SUI_PACKAGE_ID');
+        this.network = config.network ?? getEnv('SUI_NETWORK') ?? 'testnet';
+        this.rpcUrl = config.rpcUrl ?? getEnv('SUI_RPC_URL') ?? getFullnodeUrl(this.network);
+        this.ensManager = config.ensManager ?? null;
+        const pk = config.privateKey ?? getEnv('SUI_PRIVATE_KEY');
+        this.signer = pk ? createSigner(pk) : null;
         
-        // In-memory storage for demo (would be replaced with actual Sui RPC calls)
-        this.exams = new Map();
-        this.submissions = new Map();
-        this.results = new Map();
+        // Initialize client lazily (only when packageId is available)
+        this._client = null;
     }
 
-    /**
-     * Store exam metadata on Sui blockchain
-     */
-    async storeExam(examData) {
-        const examId = `exam_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const examObject = {
-            objectId: '0x' + Math.random().toString(16).substr(2, 40),
-            examId,
-            title: examData.title,
-            description: examData.description,
-            creator: examData.creatorWallet,
-            duration: examData.duration,
-            fee: examData.fee,
-            passPercentage: examData.passPercentage,
-            questions: examData.questions,
-            totalMarks: examData.questions.reduce((sum, q) => sum + q.marks, 0),
-            createdAt: Date.now(),
-            status: 'active',
-            yellowSessionId: examData.yellowSessionId,
-            ensDomain: examData.ensDomain
-        };
-        
-        this.exams.set(examId, examObject);
-        
-        console.log(`[Sui] Exam stored on blockchain: ${examId}`);
-        console.log(`[Sui] Object ID: ${examObject.objectId}`);
-        
-        return {
-            success: true,
-            examId,
-            objectId: examObject.objectId,
-            txDigest: '0x' + Math.random().toString(16).substr(2, 64)
-        };
-    }
-
-    /**
-     * Get exam by ID
-     */
-    async getExam(examId) {
-        const exam = this.exams.get(examId);
-        if (!exam) {
-            throw new Error(`Exam ${examId} not found on blockchain`);
+    _requirePackageId() {
+        if (!this.packageId) {
+            throw new Error('SuiStorageManager: SUI_PACKAGE_ID is required. Set SUI_PACKAGE_ID environment variable or pass packageId in config.');
         }
-        return exam;
     }
 
-    /**
-     * Get all active exams
-     */
-    async getAllExams() {
-        return Array.from(this.exams.values()).filter(e => e.status === 'active');
-    }
-
-    /**
-     * Store student submission on Sui blockchain
-     * ONLY stores FINAL_HASH, never wallet address or UID
-     */
-    async storeSubmission(submissionData) {
-        const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Blockchain storage - ONLY anonymous data
-        const submissionObject = {
-            objectId: '0x' + Math.random().toString(16).substr(2, 40),
-            submissionId,
-            examId: submissionData.examId,
-            finalHash: submissionData.finalHash, // FINAL_HASH only (from UID → UID_HASH → FINAL_HASH)
-            answerHash: submissionData.answerHash, // Hash of answers, not raw answers
-            submittedAt: Date.now(),
-            timeTaken: submissionData.timeTaken,
-            status: 'pending_evaluation',
-            // NO wallet address
-            // NO uid
-            // NO uidHash
-        };
-        
-        this.submissions.set(submissionId, submissionObject);
-        
-        console.log(`[Sui] Submission stored on blockchain: ${submissionId}`);
-        console.log(`[Sui] Object ID: ${submissionObject.objectId}`);
-        console.log(`[Sui] FINAL_HASH: ${submissionObject.finalHash.substring(0, 16)}... (anonymous)`);
-        console.log(`[Sui] ✅ NO wallet address stored`);
-        
-        return {
-            success: true,
-            submissionId,
-            objectId: submissionObject.objectId,
-            txDigest: '0x' + Math.random().toString(16).substr(2, 64)
-        };
-    }
-
-    /**
-     * Get submission by ID
-     */
-    async getSubmission(submissionId) {
-        const submission = this.submissions.get(submissionId);
-        if (!submission) {
-            throw new Error(`Submission ${submissionId} not found on blockchain`);
+    get client() {
+        if (!this._client) {
+            this._requirePackageId();
+            this._client = new SuiClient({ url: this.rpcUrl });
         }
-        return submission;
+        return this._client;
     }
 
-    /**
-     * Get all submissions for an exam
-     */
-    async getExamSubmissions(examId) {
-        return Array.from(this.submissions.values())
-            .filter(s => s.examId === examId);
-    }
-
-    /**
-     * Get pending submissions for evaluation
-     */
-    async getPendingSubmissions(examId) {
-        return Array.from(this.submissions.values())
-            .filter(s => s.examId === examId && s.status === 'pending_evaluation');
-    }
-
-    /**
-     * Store evaluation result on Sui blockchain
-     * ONLY stores FINAL_HASH for both student and evaluator
-     */
-    async storeResult(resultData) {
-        const resultId = `result_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Blockchain storage - ONLY anonymous data
-        const resultObject = {
-            objectId: '0x' + Math.random().toString(16).substr(2, 40),
-            resultId,
-            submissionId: resultData.submissionId,
-            examId: resultData.examId,
-            studentFinalHash: resultData.studentFinalHash, // Student's FINAL_HASH
-            evaluatorFinalHash: resultData.evaluatorFinalHash, // Evaluator's FINAL_HASH
-            score: resultData.score,
-            maxScore: resultData.maxScore,
-            percentage: resultData.percentage,
-            passed: resultData.passed,
-            feedback: resultData.feedback,
-            questionScores: resultData.questionScores,
-            evaluatedAt: Date.now(),
-            immutable: true
-            // NO wallet addresses
-            // NO uid or uidHash
-        };
-        
-        this.results.set(resultId, resultObject);
-        
-        // Update submission status
-        const submission = this.submissions.get(resultData.submissionId);
-        if (submission) {
-            submission.status = 'evaluated';
-            submission.resultId = resultId;
-        }
-        
-        console.log(`[Sui] Result stored on blockchain: ${resultId}`);
-        console.log(`[Sui] Object ID: ${resultObject.objectId}`);
-        console.log(`[Sui] Score: ${resultData.score}/${resultData.maxScore} (${resultData.percentage}%)`);
-        console.log(`[Sui] Student FINAL_HASH: ${resultObject.studentFinalHash.substring(0, 16)}...`);
-        console.log(`[Sui] Evaluator FINAL_HASH: ${resultObject.evaluatorFinalHash.substring(0, 16)}...`);
-        console.log(`[Sui] ✅ NO wallet addresses stored`);
-        
-        return {
-            success: true,
-            resultId,
-            objectId: resultObject.objectId,
-            txDigest: '0x' + Math.random().toString(16).substr(2, 64)
-        };
-    }
-
-    /**
-     * Get result by submission ID
-     */
-    async getResultBySubmission(submissionId) {
-        const result = Array.from(this.results.values())
-            .find(r => r.submissionId === submissionId);
-        
-        if (!result) {
-            throw new Error(`Result for submission ${submissionId} not found`);
+    async _executeTx(transaction) {
+        if (!this.signer) throw new Error('SuiStorageManager: SUI_PRIVATE_KEY required for writes');
+        const result = await this.client.signAndExecuteTransaction({
+            transaction,
+            signer: this.signer,
+            options: { showObjectChanges: true }
+        });
+        if (result.effects?.status?.status !== 'success') {
+            const err = result.effects?.status?.error ?? result.effects?.status;
+            throw new Error(err ? JSON.stringify(err) : 'Transaction failed');
         }
         return result;
     }
 
-    /**
-     * Get all results for a student (by FINAL_HASH)
-     * Student provides their locally stored FINAL_HASH to retrieve results
-     */
-    async getStudentResults(studentFinalHash) {
-        console.log(`[Sui] Querying results by FINAL_HASH: ${studentFinalHash.substring(0, 16)}...`);
-        return Array.from(this.results.values())
-            .filter(r => r.studentFinalHash === studentFinalHash);
-    }
+    async storeExam(examData) {
+        this._requirePackageId();
+        const examIdStr = `exam_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+        const examIdBytes = Array.from(new TextEncoder().encode(examIdStr));
+        const ensName = examData.ensDomain ?? '';
+        const examFee = BigInt(Math.floor(Number(examData.fee ?? 0) * 1e9));
 
-    /**
-     * Verify result immutability
-     */
-    async verifyResult(resultId) {
-        const result = this.results.get(resultId);
-        if (!result) {
-            throw new Error(`Result ${resultId} not found`);
-        }
-        
+        const tx = new Transaction();
+        tx.moveCall({
+            target: `${this.packageId}::exam::create_exam`,
+            arguments: [
+                tx.pure(bcs.vector(bcs.U8).serialize(examIdBytes)),
+                tx.pure.string(ensName),
+                tx.pure.u64(examFee),
+                tx.object(SUI_CLOCK_OBJECT_ID)
+            ]
+        });
+
+        const result = await this._executeTx(tx);
+        const objectId = getCreatedObjectId(result);
+        const txDigest = getTxDigest(result);
+        if (!objectId) throw new Error('Failed to get created exam object ID');
+
+        const examId = objectId;
+        console.log('[Sui] Exam stored on blockchain:', examId);
+        console.log('[Sui] Tx digest:', txDigest);
+
         return {
-            verified: true,
-            immutable: result.immutable,
-            objectId: result.objectId,
-            timestamp: result.evaluatedAt,
-            blockchainProof: '0x' + Math.random().toString(16).substr(2, 64)
+            success: true,
+            examId,
+            objectId,
+            txDigest: txDigest ?? undefined
         };
     }
 
-    /**
-     * Get exam statistics
-     */
-    async getExamStats(examId) {
+    _parseExamObject(obj) {
+        const content = obj.data?.content;
+        if (!content || content.dataType !== 'moveObject') return null;
+        const fields = content.fields ?? {};
+        return {
+            examId: fields.exam_id ? bytesToHex(fields.exam_id) : null,
+            creator: fields.creator ?? null,
+            ens_name: fields.ens_name ?? '',
+            exam_fee: fields.exam_fee != null ? String(fields.exam_fee) : '0',
+            status: fields.status != null ? Number(fields.status) : 1,
+            timestamp: fields.timestamp != null ? Number(fields.timestamp) : 0
+        };
+    }
+
+    async getExam(examId) {
+        this._requirePackageId();
+        const obj = await this.client.getObject({
+            id: examId,
+            options: { showContent: true }
+        });
+        if (obj.error || !obj.data) throw new Error(`Exam ${examId} not found on blockchain`);
+        const parsed = this._parseExamObject(obj.data);
+        if (!parsed) throw new Error(`Invalid exam object: ${examId}`);
+
+        let title = '';
+        let description = '';
+        let questions = [];
+        let totalMarks = 0;
+        if (this.ensManager) {
+            try {
+                const list = await this.ensManager.getExamList();
+                const meta = list.find(e => e.examId === examId);
+                if (meta) {
+                    title = meta.examName ?? meta.title ?? '';
+                    description = meta.description ?? '';
+                    questions = Array.isArray(meta.questions) ? meta.questions : [];
+                    totalMarks = questions.reduce((sum, q) => sum + (q.marks ?? 0), 0);
+                }
+            } catch (e) {
+                console.warn('[Sui] ENS metadata lookup failed:', e.message);
+            }
+        }
+
+        return {
+            examId,
+            objectId: examId,
+            title,
+            description,
+            creator: parsed.creator,
+            duration: 60,
+            fee: String(Number(parsed.exam_fee) / 1e9),
+            passPercentage: 40,
+            questions,
+            totalMarks,
+            createdAt: parsed.timestamp,
+            status: parsed.status === 1 ? 'active' : 'completed',
+            ensDomain: parsed.ens_name,
+            yellowSessionId: null
+        };
+    }
+
+    async getAllExams() {
+        if (!this.ensManager) return [];
+        const list = await this.ensManager.getExamList();
+        const exams = [];
+        for (const e of list) {
+            if (!e.examId) continue;
+            try {
+                const exam = await this.getExam(e.examId);
+                if (exam.status === 'active') exams.push(exam);
+            } catch (_) {}
+        }
+        return exams;
+    }
+
+    _bytesArg(bytes) {
+        return Array.isArray(bytes) ? new Uint8Array(bytes) : bytes;
+    }
+
+    async storeSubmission(submissionData) {
+        this._requirePackageId();
+        const uidHash = typeof submissionData.finalHash === 'string'
+            ? hexToBytes(submissionData.finalHash.startsWith('0x') ? submissionData.finalHash.slice(2) : submissionData.finalHash)
+            : this._bytesArg(submissionData.finalHash);
+        const examIdBytes = typeof submissionData.examId === 'string'
+            ? new TextEncoder().encode(submissionData.examId)
+            : this._bytesArg(submissionData.examId);
+        const answerHash = typeof submissionData.answerHash === 'string'
+            ? hexToBytes(submissionData.answerHash.startsWith('0x') ? submissionData.answerHash.slice(2) : submissionData.answerHash)
+            : this._bytesArg(submissionData.answerHash);
+
+        const tx = new Transaction();
+        tx.moveCall({
+            target: `${this.packageId}::submission::create_submission`,
+            arguments: [
+                tx.pure(bcs.vector(bcs.U8).serialize(uidHash)),
+                tx.pure(bcs.vector(bcs.U8).serialize(examIdBytes)),
+                tx.pure(bcs.vector(bcs.U8).serialize(answerHash)),
+                tx.object(SUI_CLOCK_OBJECT_ID)
+            ]
+        });
+
+        const result = await this._executeTx(tx);
+        const objectId = getCreatedObjectId(result);
+        const txDigest = getTxDigest(result);
+        if (!objectId) throw new Error('Failed to get created submission object ID');
+
+        const submissionId = objectId;
+        console.log('[Sui] Submission stored:', submissionId);
+        if (this.ensManager) {
+            try {
+                await this.ensManager.appendSubmissionId(submissionData.examId, submissionId);
+            } catch (e) {
+                console.warn('[Sui] ENS appendSubmissionId failed:', e.message);
+            }
+        }
+
+        return {
+            success: true,
+            submissionId,
+            objectId,
+            txDigest: txDigest ?? undefined
+        };
+    }
+
+    _parseSubmissionObject(obj) {
+        const content = obj.data?.content;
+        if (!content || content.dataType !== 'moveObject') return null;
+        const fields = content.fields ?? {};
+        const uidHash = fields.uid_hash ? bytesToHex(fields.uid_hash) : '';
+        const examIdBytes = fields.exam_id;
+        const examId = examIdBytes ? new TextDecoder().decode(new Uint8Array(examIdBytes)) : '';
+        return {
+            uid_hash: uidHash,
+            finalHash: uidHash,
+            examId,
+            answerHash: fields.answer_hash ? bytesToHex(fields.answer_hash) : '',
+            timestamp: fields.timestamp != null ? Number(fields.timestamp) : 0
+        };
+    }
+
+    async getSubmission(submissionId) {
+        this._requirePackageId();
+        const obj = await this.client.getObject({
+            id: submissionId,
+            options: { showContent: true }
+        });
+        if (obj.error || !obj.data) throw new Error(`Submission ${submissionId} not found on blockchain`);
+        const parsed = this._parseSubmissionObject(obj.data);
+        if (!parsed) throw new Error(`Invalid submission object: ${submissionId}`);
+        return {
+            submissionId,
+            objectId: submissionId,
+            examId: parsed.examId,
+            finalHash: parsed.finalHash,
+            answerHash: parsed.answerHash,
+            submittedAt: parsed.timestamp,
+            timeTaken: 0,
+            status: 'pending_evaluation'
+        };
+    }
+
+    async getExamSubmissions(examId) {
+        if (!this.ensManager) return [];
+        const ids = await this.ensManager.getSubmissionIds(examId);
+        const out = [];
+        for (const id of ids) {
+            try {
+                out.push(await this.getSubmission(id));
+            } catch (_) {}
+        }
+        return out;
+    }
+
+    async getPendingSubmissions(examId) {
+        this._requirePackageId();
+        const resultIds = this.ensManager ? await this.ensManager.getResultIds(examId) : [];
+        const resultUidHashes = new Set();
+        for (const rid of resultIds) {
+            try {
+                const ro = await this.client.getObject({ id: rid, options: { showContent: true } });
+                const c = ro.data?.content;
+                if (c?.dataType === 'moveObject' && c.fields?.uid_hash) {
+                    resultUidHashes.add(bytesToHex(c.fields.uid_hash));
+                }
+            } catch (_) {}
+        }
         const submissions = await this.getExamSubmissions(examId);
-        const results = Array.from(this.results.values())
-            .filter(r => r.examId === examId);
-        
+        return submissions.filter(s => !resultUidHashes.has(s.finalHash));
+    }
+
+    async storeResult(resultData) {
+        this._requirePackageId();
+        const uidHash = typeof resultData.studentFinalHash === 'string'
+            ? hexToBytes(resultData.studentFinalHash.startsWith('0x') ? resultData.studentFinalHash.slice(2) : resultData.studentFinalHash)
+            : this._bytesArg(resultData.studentFinalHash);
+        const examIdBytes = new TextEncoder().encode(resultData.examId);
+        const score = BigInt(Math.floor(Number(resultData.score ?? 0)));
+        const maxScore = BigInt(Math.floor(Number(resultData.maxScore ?? 100)));
+        const rank = BigInt(0);
+
+        const tx = new Transaction();
+        tx.moveCall({
+            target: `${this.packageId}::result::publish_result`,
+            arguments: [
+                tx.pure(bcs.vector(bcs.U8).serialize(uidHash)),
+                tx.pure(bcs.vector(bcs.U8).serialize(examIdBytes)),
+                tx.pure.u64(score),
+                tx.pure.u64(rank),
+                tx.object(SUI_CLOCK_OBJECT_ID)
+            ]
+        });
+
+        const result = await this._executeTx(tx);
+        const objectId = getCreatedObjectId(result);
+        const txDigest = getTxDigest(result);
+        if (!objectId) throw new Error('Failed to get created result object ID');
+
+        const resultId = objectId;
+        if (this.ensManager) {
+            try {
+                await this.ensManager.appendResultId(resultData.examId, resultId);
+            } catch (e) {
+                console.warn('[Sui] ENS appendResultId failed:', e.message);
+            }
+        }
+
+        const percentage = resultData.maxScore ? (Number(resultData.score) / Number(resultData.maxScore)) * 100 : 0;
+        return {
+            success: true,
+            resultId,
+            objectId,
+            txDigest: txDigest ?? undefined
+        };
+    }
+
+    async getResultBySubmission(submissionId) {
+        this._requirePackageId();
+        const sub = await this.getSubmission(submissionId);
+        const resultIds = this.ensManager ? await this.ensManager.getResultIds(sub.examId) : [];
+        for (const rid of resultIds) {
+            const ro = await this.client.getObject({ id: rid, options: { showContent: true } });
+            const c = ro.data?.content;
+            if (c?.dataType === 'moveObject' && c.fields?.uid_hash && bytesToHex(c.fields.uid_hash) === sub.finalHash) {
+                return this._parseResultObject(ro.data, rid);
+            }
+        }
+        throw new Error(`Result for submission ${submissionId} not found`);
+    }
+
+    _parseResultObject(obj, objectId) {
+        const content = obj?.content ?? obj?.data?.content;
+        if (!content || content.dataType !== 'moveObject') return null;
+        const fields = content.fields ?? {};
+        const uidHash = fields.uid_hash ? bytesToHex(fields.uid_hash) : '';
+        const examIdBytes = fields.exam_id;
+        const examId = examIdBytes ? new TextDecoder().decode(new Uint8Array(examIdBytes)) : '';
+        return {
+            resultId: objectId,
+            objectId,
+            submissionId: null,
+            examId,
+            studentFinalHash: uidHash,
+            evaluatorFinalHash: '',
+            score: Number(fields.score ?? 0),
+            maxScore: 100,
+            percentage: 0,
+            passed: false,
+            feedback: '',
+            questionScores: [],
+            evaluatedAt: Number(fields.timestamp ?? 0),
+            immutable: true
+        };
+    }
+
+    async getStudentResults(studentFinalHash) {
+        this._requirePackageId();
+        const hashHex = studentFinalHash.startsWith('0x') ? studentFinalHash : `0x${studentFinalHash}`;
+        const results = [];
+        if (!this.ensManager) return results;
+        const list = await this.ensManager.getExamList();
+        for (const e of list) {
+            if (!e.examId) continue;
+            const resultIds = await this.ensManager.getResultIds(e.examId);
+            for (const rid of resultIds) {
+                try {
+                    const ro = await this.client.getObject({ id: rid, options: { showContent: true } });
+                    const c = ro.data?.content;
+                    if (c?.dataType === 'moveObject' && c.fields?.uid_hash && bytesToHex(c.fields.uid_hash) === hashHex) {
+                        const parsed = this._parseResultObject(ro.data, rid);
+                        if (parsed) {
+                            parsed.submissionId = null;
+                            parsed.maxScore = parsed.score;
+                            parsed.percentage = parsed.score;
+                            parsed.passed = parsed.score >= 40;
+                            results.push(parsed);
+                        }
+                    }
+                } catch (_) {}
+            }
+        }
+        return results;
+    }
+
+    async verifyResult(resultId) {
+        this._requirePackageId();
+        const obj = await this.client.getObject({ id: resultId, options: { showContent: true } });
+        if (obj.error || !obj.data) throw new Error(`Result ${resultId} not found`);
+        const parsed = this._parseResultObject(obj.data, resultId);
+        if (!parsed) throw new Error(`Invalid result object: ${resultId}`);
+        return {
+            verified: true,
+            immutable: true,
+            objectId: resultId,
+            timestamp: parsed.evaluatedAt,
+            blockchainProof: obj.data.digest ?? ''
+        };
+    }
+
+    async getExamStats(examId) {
+        this._requirePackageId();
+        const submissions = await this.getExamSubmissions(examId);
+        const resultIds = this.ensManager ? await this.ensManager.getResultIds(examId) : [];
+        const results = [];
+        for (const rid of resultIds) {
+            try {
+                const ro = await this.client.getObject({ id: rid, options: { showContent: true } });
+                const parsed = this._parseResultObject(ro.data, rid);
+                if (parsed) results.push(parsed);
+            } catch (_) {}
+        }
         const totalSubmissions = submissions.length;
         const evaluated = results.length;
         const pending = totalSubmissions - evaluated;
         const passed = results.filter(r => r.passed).length;
         const failed = results.filter(r => !r.passed).length;
-        
         const avgScore = results.length > 0
-            ? results.reduce((sum, r) => sum + r.percentage, 0) / results.length
+            ? results.reduce((sum, r) => sum + (r.percentage ?? 0), 0) / results.length
             : 0;
-        
         return {
             totalSubmissions,
             evaluated,
@@ -253,5 +481,3 @@ class SuiStorageManager {
         };
     }
 }
-
-export default SuiStorageManager;

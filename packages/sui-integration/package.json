@@ -4,7 +4,14 @@
   "description": "Sui blockchain integration for FairTest Protocol",
   "main": "index.js",
   "type": "module",
-  "keywords": ["sui", "blockchain", "fairtest"],
+  "dependencies": {
+    "@mysten/sui": "1.2.0"
+  },
+  "keywords": [
+    "sui",
+    "blockchain",
+    "fairtest"
+  ],
   "author": "FairTest Team",
   "license": "MIT"
 }
