@@ -76,28 +76,31 @@ class FairTestService {
     async createExam(examData) {
         if (!this.currentWallet) throw new Error('Wallet not connected');
         
-        // Step 1: Create Yellow Network payment session for listing fee
-        console.log('[FairTest] Step 1: Creating Yellow payment session...');
-        const listingFee = 0.1; // Platform listing fee
-        const paymentResult = await this.payment.processListingPayment({
-            creatorWallet: this.currentWallet,
-            listingFee,
-            examMetadata: { title: examData.title }
-        });
+        // TEMPORARY: Skip Yellow and ENS for testing Sui integration
+        console.log('[FairTest] Skipping Yellow payment (no getSigner configured)');
+        console.log('[FairTest] Skipping ENS subdomain (domain not owned)');
         
-        // Step 2: Create ENS subdomain
-        console.log('[FairTest] Step 2: Creating ENS subdomain...');
-        const ensResult = await this.ens.createExamSubdomain(examData.title, {
-            examName: examData.title,
-            creatorWallet: this.currentWallet,
-            examFee: examData.fee
-        });
-        
-        // Step 3: Store exam on Sui blockchain
-        console.log('[FairTest] Step 3: Storing exam on Sui blockchain...');
+        // Step 3: Store exam on Sui blockchain (THIS WILL WORK)
+        console.log('[FairTest] Storing exam on Sui blockchain...');
         const suiResult = await this.sui.storeExam({
             ...examData,
             creatorWallet: this.currentWallet,
+            yellowSessionId: 'test-session-' + Date.now(),
+            ensDomain: `${examData.title.toLowerCase().replace(/\s+/g, '-')}.fairtest.eth`
+        });
+        
+        console.log('[FairTest] ✅ Exam created successfully!');
+        console.log('[FairTest] Exam ID:', suiResult.examId);
+        console.log('[FairTest] Tx Digest:', suiResult.txDigest);
+        
+        return {
+            examId: suiResult.examId,
+            ensDomain: `${examData.title.toLowerCase().replace(/\s+/g, '-')}.fairtest.eth`,
+            suiObjectId: suiResult.objectId,
+            txDigest: suiResult.txDigest,
+            yellowSessionId: 'test-session-' + Date.now()
+        };
+    }
             yellowSessionId: paymentResult.sessionId,
             ensDomain: ensResult.subdomain
         });
@@ -158,29 +161,11 @@ class FairTestService {
      * STUDENT: Browse available exams
      */
     async browseExams() {
-        // Get exams from ENS discovery
-        const ensExams = await this.ens.getExamList();
-        
-        // Enrich with Sui blockchain data
-        const exams = [];
-        for (const ensExam of ensExams) {
-            if (ensExam.examId) {
-                try {
-                    const suiExam = await this.sui.getExam(ensExam.examId);
-                    const stats = await this.sui.getExamStats(ensExam.examId);
-                    
-                    exams.push({
-                        ...suiExam,
-                        ensDomain: ensExam.ensDomain,
-                        stats
-                    });
-                } catch (error) {
-                    console.warn(`[FairTest] Could not load exam ${ensExam.examId}:`, error.message);
-                }
-            }
-        }
-        
-        return exams;
+        // TEMPORARY: Return empty array since ENS not configured
+        // In production, this would query ENS for exam list
+        console.log('[FairTest] Browse exams: ENS not configured, returning empty list');
+        console.log('[FairTest] To see exams, use exam ID directly from creator');
+        return [];
     }
 
     /**
