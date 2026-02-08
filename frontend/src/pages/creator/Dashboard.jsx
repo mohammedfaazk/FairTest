@@ -68,7 +68,7 @@ const CreatorDashboard = () => {
       <div className="creator-dashboard">
         <div className="empty-state">
           <h2>🔗 Connect Your Wallet</h2>
-          <p>Connect your Sui wallet (e.g. Suiet) to view your creator dashboard and manage exams.</p>
+          <p>Connect your Sui wallet (e.g. Suiet) to view your faculty dashboard and manage exams.</p>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '1rem' }}>Use the Connect Wallet button in the top bar.</p>
         </div>
       </div>
@@ -117,7 +117,7 @@ const CreatorDashboard = () => {
   return (
     <div className="creator-dashboard">
       <div className="greeting-banner">
-        <h1 className="greeting-title">Welcome back, Creator! 👋</h1>
+        <h1 className="greeting-title">Welcome back, Faculty! 👋</h1>
         <p className="greeting-subtitle">
           Your exams have reached {stats[2].value} students
         </p>

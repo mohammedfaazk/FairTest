@@ -1,0 +1,53 @@
+/* Tile effect: orange + black border by default, white + black text on hover (match faculty dashboard) */
+
+.evaluator-dashboard .dashboard-tile {
+  background: var(--orange-primary) !important;
+  border: 2px solid #000 !important;
+  color: #fff !important;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.evaluator-dashboard .dashboard-tile:hover {
+  background: #fff !important;
+  color: #000 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.evaluator-dashboard .dashboard-tile,
+.evaluator-dashboard .dashboard-tile table,
+.evaluator-dashboard .dashboard-tile th,
+.evaluator-dashboard .dashboard-tile td,
+.evaluator-dashboard .dashboard-tile code,
+.evaluator-dashboard .dashboard-tile p,
+.evaluator-dashboard .dashboard-tile h3,
+.evaluator-dashboard .dashboard-tile h4,
+.evaluator-dashboard .dashboard-tile button {
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.evaluator-dashboard .dashboard-tile button:hover {
+  color: #000 !important;
+}
+
+.evaluator-dashboard .dashboard-tile:hover,
+.evaluator-dashboard .dashboard-tile:hover table,
+.evaluator-dashboard .dashboard-tile:hover th,
+.evaluator-dashboard .dashboard-tile:hover td,
+.evaluator-dashboard .dashboard-tile:hover code,
+.evaluator-dashboard .dashboard-tile:hover p,
+.evaluator-dashboard .dashboard-tile:hover h3,
+.evaluator-dashboard .dashboard-tile:hover h4,
+.evaluator-dashboard .dashboard-tile:hover button {
+  color: #000 !important;
+  border-color: #000 !important;
+}
+
+.evaluator-dashboard .dashboard-tile tr {
+  border-bottom-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.evaluator-dashboard .dashboard-tile:hover tr {
+  border-bottom-color: #000 !important;
+}
