@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import fairTestService from '../../services/FairTestService';
 import AutoEvaluator from '../../../../packages/core/AutoEvaluator';
+import './EvaluatorDashboard.css';
 
 function EvaluatorDashboard() {
     const [exams, setExams] = useState([]);
@@ -140,7 +141,7 @@ function EvaluatorDashboard() {
     return (
         <div className="evaluator-dashboard">
             <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '1rem' }}>Evaluator Dashboard</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '3rem' }}>Review submissions blindly. You only see anonymous FINAL_HASH.</p>
+            <p style={{ color: '#000', marginBottom: '3rem' }}>Review submissions blindly. You only see anonymous candidate IDs.</p>
 
             {error && (
                 <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '0.5rem', color: 'var(--error)' }}>{error}</div>
@@ -148,11 +149,11 @@ function EvaluatorDashboard() {
 
             {exams.length > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Exam</label>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#000' }}>Exam</label>
                     <select
                         value={selectedExamId || ''}
                         onChange={(e) => setSelectedExamId(e.target.value)}
-                        style={{ padding: '0.5rem', borderRadius: '0.5rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white', minWidth: '200px' }}
+                        style={{ padding: '0.5rem', borderRadius: '0.5rem', background: 'white', border: '2px solid #000', color: '#000', minWidth: '200px' }}
                     >
                         {exams.map((ex) => (
                             <option key={ex.examId} value={ex.examId}>{ex.title}</option>
@@ -165,27 +166,27 @@ function EvaluatorDashboard() {
             )}
 
             {loading ? (
-                <p style={{ color: 'var(--text-muted)' }}>Loading submissions...</p>
+                <p style={{ color: '#000' }}>Loading submissions...</p>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 600px' : '1fr', gap: '2rem' }}>
-                    <div className="glass-card" style={{ padding: '0' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="glass-card dashboard-tile" style={{ padding: '0' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', color: '#000' }}>
                             <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                                    <th style={{ padding: '1rem' }}>FINAL_HASH (Anonymous)</th>
-                                    <th style={{ padding: '1rem' }}>Exam</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right' }}>Action</th>
+                                <tr style={{ borderBottom: '2px solid #000', textAlign: 'left' }}>
+                                    <th style={{ padding: '1rem', color: '#000' }}>Anonymous ID</th>
+                                    <th style={{ padding: '1rem', color: '#000' }}>Exam</th>
+                                    <th style={{ padding: '1rem', textAlign: 'right', color: '#000' }}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {submissions.map((sub) => (
-                                    <tr key={sub.submissionId} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '1rem' }}><code style={{ color: 'var(--primary)' }}>{displayHash(sub)}</code></td>
+                                    <tr key={sub.submissionId} style={{ borderBottom: '1px solid #000' }}>
+                                        <td style={{ padding: '1rem' }}><code style={{ color: '#000' }}>{displayHash(sub)}</code></td>
                                         <td style={{ padding: '1rem' }}>{sub.exam?.title || selectedExamId}</td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
                                             <button
                                                 onClick={() => handleSelectSubmission(sub)}
-                                                style={{ color: 'var(--primary)' }}
+                                                style={{ color: '#000', fontWeight: 600 }}
                                             >
                                                 Grade Submission
                                             </button>
@@ -195,13 +196,13 @@ function EvaluatorDashboard() {
                             </tbody>
                         </table>
                         {submissions.length === 0 && !loading && (
-                            <p style={{ padding: '2rem', color: 'var(--text-muted)' }}>No pending submissions for this exam.</p>
+                            <p style={{ padding: '2rem', color: '#000', textAlign: 'center' }}>No pending submissions for this exam.</p>
                         )}
                     </div>
 
                     {selected && (
-                        <div className="glass-card" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-                            <h3 style={{ marginBottom: '1.5rem' }}>Grading {displayHash(selected)}</h3>
+                        <div className="glass-card dashboard-tile" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+                            <h3 style={{ marginBottom: '1.5rem', color: '#000' }}>Grading {displayHash(selected)}</h3>
                             
                             {autoEvalResult && (
                                 <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '0.5rem' }}>

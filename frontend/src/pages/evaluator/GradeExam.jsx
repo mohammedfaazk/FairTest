@@ -121,8 +121,8 @@ function GradeExam({ examId }) {
                 <Link href="/evaluator" style={{ color: 'var(--primary)', textDecoration: 'none' }}>← Back to Evaluator Dashboard</Link>
             </div>
             <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem' }}>Grade Exam</h1>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-                {exam ? exam.title : examId} — Review submissions blindly. You only see anonymous FINAL_HASH.
+            <p style={{ color: '#000', marginBottom: '2rem' }}>
+                {exam ? exam.title : examId} — Review submissions blindly. You only see anonymous candidate IDs.
             </p>
 
             {error && (
@@ -130,27 +130,27 @@ function GradeExam({ examId }) {
             )}
 
             {loading ? (
-                <p style={{ color: 'var(--text-muted)' }}>Loading submissions...</p>
+                <p style={{ color: '#000' }}>Loading submissions...</p>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 450px' : '1fr', gap: '2rem' }}>
                     <div>
-                        <div className="glass-card" style={{ padding: '0', marginBottom: '2rem' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div className="glass-card" style={{ padding: '0', marginBottom: '2rem', background: 'white', border: '4px solid #000', color: '#000' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', color: '#000' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-                                        <th style={{ padding: '1rem' }}>FINAL_HASH (Anonymous)</th>
-                                        <th style={{ padding: '1rem', textAlign: 'right' }}>Action</th>
+                                    <tr style={{ borderBottom: '2px solid #000', textAlign: 'left' }}>
+                                        <th style={{ padding: '1rem', color: '#000' }}>Anonymous ID</th>
+                                        <th style={{ padding: '1rem', textAlign: 'right', color: '#000' }}>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {submissions.map((sub) => (
-                                        <tr key={sub.submissionId} style={{ borderBottom: '1px solid var(--border)' }}>
-                                            <td style={{ padding: '1rem' }}><code style={{ color: 'var(--primary)' }}>{displayHash(sub)}</code></td>
+                                        <tr key={sub.submissionId} style={{ borderBottom: '1px solid #000' }}>
+                                            <td style={{ padding: '1rem' }}><code style={{ color: '#000' }}>{displayHash(sub)}</code></td>
                                             <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                 <button
                                                     onClick={() => handleSelectSubmission(sub)}
                                                     className="btn-secondary"
-                                                    style={{ padding: '0.5rem 1rem' }}
+                                                    style={{ padding: '0.5rem 1rem', color: '#000' }}
                                                 >
                                                     Grade Submission
                                                 </button>
@@ -160,25 +160,25 @@ function GradeExam({ examId }) {
                                 </tbody>
                             </table>
                             {submissions.length === 0 && !loading && (
-                                <p style={{ padding: '2rem', color: 'var(--text-muted)', textAlign: 'center' }}>No pending submissions for this exam.</p>
+                                <p style={{ padding: '2rem', color: '#000', textAlign: 'center' }}>No pending submissions for this exam.</p>
                             )}
                         </div>
                         
                         {selected && exam && exam.questions && (
-                            <div className="glass-card">
-                                <h3 style={{ marginBottom: '1.5rem' }}>Student Answers</h3>
+                            <div className="glass-card" style={{ background: 'white', border: '4px solid #000', color: '#000' }}>
+                                <h3 style={{ marginBottom: '1.5rem', color: '#000' }}>Student Answers</h3>
                                 {exam.questions.map((question, idx) => (
-                                    <div key={idx} style={{ marginBottom: '2rem', paddingBottom: '2rem', borderBottom: idx < exam.questions.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                                    <div key={idx} style={{ marginBottom: '2rem', paddingBottom: '2rem', borderBottom: idx < exam.questions.length - 1 ? '1px solid #000' : 'none' }}>
                                         <div style={{ marginBottom: '1rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                <strong>Question {idx + 1}</strong>
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Max: {question.marks} marks</span>
+                                                <strong style={{ color: '#000' }}>Question {idx + 1}</strong>
+                                                <span style={{ color: '#000', fontSize: '0.875rem' }}>Max: {question.marks} marks</span>
                                             </div>
-                                            <p style={{ color: 'var(--text-muted)' }}>{question.question}</p>
+                                            <p style={{ color: '#000' }}>{question.question}</p>
                                         </div>
-                                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
-                                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Student Answer:</p>
-                                            <p>{selected.answers?.[idx] || 'No answer provided'}</p>
+                                        <div style={{ background: 'rgba(0,0,0,0.06)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '1rem' }}>
+                                            <p style={{ fontSize: '0.875rem', color: '#000', marginBottom: '0.5rem' }}>Student Answer:</p>
+                                            <p style={{ color: '#000' }}>{selected.answers?.[idx] || 'No answer provided'}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -187,18 +187,18 @@ function GradeExam({ examId }) {
                     </div>
 
                     {selected && exam && (
-                        <div className="glass-card" style={{ position: 'sticky', top: '100px', height: 'fit-content' }}>
-                            <h3 style={{ marginBottom: '1.5rem' }}>Grade Submission</h3>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem', fontSize: '0.875rem' }}>
-                                <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Anonymous ID:</p>
-                                <code>{displayHash(selected)}</code>
+                        <div className="glass-card" style={{ position: 'sticky', top: '100px', height: 'fit-content', background: 'white', border: '4px solid #000', color: '#000' }}>
+                            <h3 style={{ marginBottom: '1.5rem', color: '#000' }}>Grade Submission</h3>
+                            <div style={{ background: 'rgba(0,0,0,0.06)', padding: '1rem', borderRadius: '0.5rem', marginBottom: '2rem', fontSize: '0.875rem', color: '#000' }}>
+                                <p style={{ color: '#000', marginBottom: '0.5rem' }}>Anonymous ID:</p>
+                                <code style={{ color: '#000' }}>{displayHash(selected)}</code>
                             </div>
                             
                             <div style={{ marginBottom: '2rem' }}>
-                                <h4 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Assign Marks</h4>
+                                <h4 style={{ marginBottom: '1rem', fontSize: '1rem', color: '#000' }}>Assign Marks</h4>
                                 {exam.questions && exam.questions.map((question, idx) => (
                                     <div key={idx} style={{ marginBottom: '1rem' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: '#000' }}>
                                             Q{idx + 1} (Max: {question.marks})
                                         </label>
                                         <input
@@ -207,16 +207,16 @@ function GradeExam({ examId }) {
                                             onChange={(e) => handleScoreChange(idx, e.target.value)}
                                             min={0}
                                             max={question.marks}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)', color: 'white' }}
+                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '0.5rem', background: 'white', border: '2px solid #000', color: '#000' }}
                                         />
                                     </div>
                                 ))}
                             </div>
                             
-                            <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(255, 165, 0, 0.1)', borderRadius: '0.5rem' }}>
+                            <div style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0,0,0,0.06)', borderRadius: '0.5rem', color: '#000' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                     <span>Total Score:</span>
-                                    <strong>{calculateTotalScore()} / {exam.totalMarks}</strong>
+                                    <strong style={{ color: '#000' }}>{calculateTotalScore()} / {exam.totalMarks}</strong>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span>Percentage:</span>

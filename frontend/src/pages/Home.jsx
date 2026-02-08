@@ -39,7 +39,7 @@ function Home() {
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--primary)' }}>1</div>
             <p style={{ fontWeight: '600' }}>Create</p>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Creators pay a Yellow listing fee and mint the exam on Sui.</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Faculty pay a Yellow listing fee and mint the exam on Sui.</p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--primary)' }}>2</div>
