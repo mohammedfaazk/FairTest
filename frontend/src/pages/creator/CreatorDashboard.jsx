@@ -13,7 +13,7 @@ function CreatorDashboard() {
         <div className="creator-dashboard">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: '700' }}>Creator Dashboard</h1>
+                    <h1 style={{ fontSize: '2rem', fontWeight: '700' }}>Faculty Dashboard</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Manage your decentralized exams and track payments.</p>
                 </div>
                 <Link href="/creator/create" className="btn-primary">+ Create New Exam</Link>
