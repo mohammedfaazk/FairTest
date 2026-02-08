@@ -108,6 +108,20 @@ function EvaluatorDashboard() {
 
             console.log('[Evaluator] Publishing result:', finalResult);
             console.log('[Evaluator] Manual scores:', manualScores);
+            console.log('[Evaluator] finalResult.questionScores BEFORE transform:', finalResult.questionScores);
+
+            // Transform questionScores to simple format for storage
+            const questionScoresArray = finalResult.questionScores.map((q, idx) => {
+                const transformed = {
+                    questionIndex: idx,
+                    score: parseFloat(q.score) || 0,
+                    maxScore: parseFloat(q.maxMarks || q.maxScore) || 0
+                };
+                console.log(`[Evaluator] Question ${idx}: score=${transformed.score}, maxScore=${transformed.maxScore}, original:`, q);
+                return transformed;
+            });
+
+            console.log('[Evaluator] questionScoresArray AFTER transform:', questionScoresArray);
 
             await fairTestService.submitEvaluation(selected.submissionId, {
                 score: finalResult.totalScore,
@@ -115,7 +129,7 @@ function EvaluatorDashboard() {
                 percentage: finalResult.percentage,
                 passed: finalResult.percentage >= (examData.passPercentage || 40),
                 feedback: '',
-                questionScores: finalResult.questionScores
+                questionScores: questionScoresArray
             });
 
             console.log('[Evaluator] ✅ Result published successfully');

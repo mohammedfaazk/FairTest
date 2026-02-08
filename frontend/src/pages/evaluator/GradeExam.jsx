@@ -50,13 +50,18 @@ function GradeExam({ examId }) {
     };
 
     const handleScoreChange = (questionIndex, value) => {
-        const numValue = parseInt(value, 10) || 0;
+        const numValue = parseFloat(value) || 0;
         const maxMarks = exam.questions[questionIndex]?.marks || 0;
         const clampedValue = Math.max(0, Math.min(numValue, maxMarks));
-        setQuestionScores(prev => ({
-            ...prev,
-            [questionIndex]: clampedValue
-        }));
+        console.log('[GradeExam] Score change - Question', questionIndex, ':', clampedValue, '/', maxMarks, 'input value:', value);
+        setQuestionScores(prev => {
+            const updated = {
+                ...prev,
+                [questionIndex]: clampedValue
+            };
+            console.log('[GradeExam] Updated questionScores:', updated);
+            return updated;
+        });
     };
 
     const calculateTotalScore = () => {
@@ -70,6 +75,10 @@ function GradeExam({ examId }) {
             return;
         }
         
+        // Force a fresh read of questionScores state
+        const currentScores = { ...questionScores };
+        console.log('[GradeExam] Current questionScores state at submit:', currentScores);
+        
         const totalScore = calculateTotalScore();
         const maxScore = exam?.totalMarks || 100;
         const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
@@ -77,11 +86,18 @@ function GradeExam({ examId }) {
         setError(null);
         setPublishing(true);
         try {
-            const questionScoresArray = exam.questions.map((q, idx) => ({
-                questionIndex: idx,
-                score: questionScores[idx] || 0,
-                maxScore: q.marks
-            }));
+            const questionScoresArray = exam.questions.map((q, idx) => {
+                const score = currentScores[idx] !== undefined ? currentScores[idx] : 0;
+                console.log(`[GradeExam] Question ${idx}: score=${score}, max=${q.marks}`);
+                return {
+                    questionIndex: idx,
+                    score: score,
+                    maxScore: q.marks
+                };
+            });
+            
+            console.log('[GradeExam] Final questionScoresArray:', questionScoresArray);
+            console.log('[GradeExam] Total score:', totalScore, 'Max score:', maxScore);
             
             await fairTestService.submitEvaluation(selected.submissionId, {
                 score: totalScore,

@@ -69,16 +69,14 @@ function ViewResults() {
                                     <h4 style={{ fontSize: '0.875rem', marginBottom: '1rem', color: '#000' }}>Question Breakdown</h4>
                                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                                         {res.questionScores.map((qs, idx) => {
-                                            let maxVal = qs.maxScore ?? qs.maxMarks ?? 0;
-                                            let scoreVal = qs.score ?? 0;
-                                            // If single question and stored per-question is 0 but overall score shows points, use overall so breakdown matches the card
-                                            if (res.questionScores.length === 1 && Number(res.score) > 0 && Number(res.maxScore) > 0 && scoreVal === 0) {
-                                                scoreVal = Number(res.score);
-                                                maxVal = Number(res.maxScore) || maxVal;
-                                            }
+                                            // Handle both old format (with questionId, maxMarks) and new format (with questionIndex, maxScore)
+                                            const scoreVal = parseFloat(qs.score) || 0;
+                                            const maxVal = parseFloat(qs.maxScore || qs.maxMarks) || 0;
+                                            const questionNum = (qs.questionIndex !== undefined && qs.questionIndex !== null) ? qs.questionIndex + 1 : idx + 1;
+                                            
                                             return (
                                                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#000' }}>
-                                                    <span>Question {typeof qs.questionIndex === 'number' && !Number.isNaN(qs.questionIndex) ? qs.questionIndex + 1 : idx + 1}</span>
+                                                    <span>Question {questionNum}</span>
                                                     <span style={{ fontWeight: '600' }}>{scoreVal}/{maxVal}</span>
                                                 </div>
                                             );

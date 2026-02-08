@@ -15,11 +15,15 @@ class FairTestService {
         // Initialize ENS Manager (mock/simulated)
         this.ens = new ENSManager();
         
+        // Ensure packageId is set from environment
+        const packageId = process.env.NEXT_PUBLIC_SUI_PACKAGE_ID || process.env.SUI_PACKAGE_ID;
+        console.log('[FairTest] SUI_PACKAGE_ID:', packageId);
+        
         this.sui = new SuiStorageManager({ 
-            packageId: process.env.NEXT_PUBLIC_SUI_PACKAGE_ID,
-            network: process.env.NEXT_PUBLIC_SUI_NETWORK || 'testnet',
-            rpcUrl: process.env.NEXT_PUBLIC_SUI_RPC_URL,
-            privateKey: process.env.NEXT_PUBLIC_SUI_PRIVATE_KEY,
+            packageId: packageId,
+            network: process.env.NEXT_PUBLIC_SUI_NETWORK || process.env.SUI_NETWORK || 'testnet',
+            rpcUrl: process.env.NEXT_PUBLIC_SUI_RPC_URL || process.env.SUI_RPC_URL,
+            privateKey: process.env.NEXT_PUBLIC_SUI_PRIVATE_KEY || process.env.SUI_PRIVATE_KEY,
             ensManager: this.ens // Pass ENS to Sui manager
         });
         this.identity = new AnonymousIDManager();
@@ -309,6 +313,14 @@ class FairTestService {
         );
         
         const submission = await this.sui.getSubmission(submissionId);
+        
+        console.log('[FairTest] Evaluation data being submitted:', {
+            submissionId,
+            examId: submission.examId,
+            studentFinalHash: submission.finalHash,
+            evaluatorFinalHash: evaluatorIdentity.finalHash,
+            ...evaluationData
+        });
         
         // Store result on Sui blockchain with FINAL_HASH for both parties
         console.log('[FairTest] Storing evaluation on blockchain...');
