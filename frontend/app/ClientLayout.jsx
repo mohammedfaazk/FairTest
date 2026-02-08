@@ -11,7 +11,7 @@ function getRoleFromPath(pathname) {
 }
 
 const TITLES = {
-  '/creator': 'Creator Dashboard',
+  '/creator': 'Faculty Dashboard',
   '/creator/create': 'Create New Exam',
   '/creator/exams': 'My Exams',
   '/creator/analytics': 'Analytics',

@@ -32,68 +32,81 @@ function ViewResults() {
             ) : (
                 <div style={{ display: 'grid', gap: '1.5rem' }}>
                     {results.map((res) => (
-                        <div key={res.resultId || res.examId} className="glass-card">
+                        <div
+                            key={res.resultId || res.examId}
+                            className="glass-card"
+                            style={{ background: 'white', border: '4px solid #000', color: '#000' }}
+                        >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                                 <div>
-                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{res.examTitle}</h3>
+                                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: '#000' }}>{res.examTitle}</h3>
                                     {res.txDigest ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <span className="badge badge-success">Verified on Sui</span>
+                                            <span className="badge badge-success" style={{ color: '#000', border: '1px solid #000' }}>Verified on Sui</span>
                                             <a 
                                                 href={`https://suiscan.xyz/testnet/tx/${res.txDigest}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'underline' }}
+                                                style={{ fontSize: '0.75rem', color: '#000', textDecoration: 'underline' }}
                                             >
                                                 View Transaction: {res.txDigest.substring(0, 10)}...
                                             </a>
                                         </div>
                                     ) : (
-                                        <span className="badge" style={{ backgroundColor: 'rgba(148, 163, 184, 0.1)', color: 'var(--text-muted)' }}>Recorded</span>
+                                        <span className="badge" style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: '#000' }}>Recorded</span>
                                     )}
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: res.passed ? 'var(--success)' : 'var(--error)' }}>
+                                <div style={{ textAlign: 'right', color: '#000' }}>
+                                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#000' }}>
                                         {res.score || 0}/{res.maxScore || 100}
                                     </div>
-                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{res.percentage || 0}%</div>
+                                    <div style={{ fontSize: '0.875rem', color: '#000' }}>{res.percentage || 0}%</div>
                                 </div>
                             </div>
                             
                             {res.questionScores && res.questionScores.length > 0 && (
-                                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '0.5rem' }}>
-                                    <h4 style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>Question Breakdown</h4>
+                                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.06)', borderRadius: '0.5rem', color: '#000' }}>
+                                    <h4 style={{ fontSize: '0.875rem', marginBottom: '1rem', color: '#000' }}>Question Breakdown</h4>
                                     <div style={{ display: 'grid', gap: '0.5rem' }}>
-                                        {res.questionScores.map((qs, idx) => (
-                                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                                                <span>Question {qs.questionIndex + 1}</span>
-                                                <span style={{ fontWeight: '600' }}>{qs.score}/{qs.maxScore}</span>
-                                            </div>
-                                        ))}
+                                        {res.questionScores.map((qs, idx) => {
+                                            let maxVal = qs.maxScore ?? qs.maxMarks ?? 0;
+                                            let scoreVal = qs.score ?? 0;
+                                            // If single question and stored per-question is 0 but overall score shows points, use overall so breakdown matches the card
+                                            if (res.questionScores.length === 1 && Number(res.score) > 0 && Number(res.maxScore) > 0 && scoreVal === 0) {
+                                                scoreVal = Number(res.score);
+                                                maxVal = Number(res.maxScore) || maxVal;
+                                            }
+                                            return (
+                                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#000' }}>
+                                                    <span>Question {typeof qs.questionIndex === 'number' && !Number.isNaN(qs.questionIndex) ? qs.questionIndex + 1 : idx + 1}</span>
+                                                    <span style={{ fontWeight: '600' }}>{scoreVal}/{maxVal}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
                             
                             {res.feedback && (
-                                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255, 165, 0, 0.1)', borderRadius: '0.5rem' }}>
-                                    <h4 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Evaluator Feedback</h4>
-                                    <p style={{ fontSize: '0.875rem' }}>{res.feedback}</p>
+                                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.06)', borderRadius: '0.5rem', color: '#000' }}>
+                                    <h4 style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: '#000' }}>Evaluator Feedback</h4>
+                                    <p style={{ fontSize: '0.875rem', color: '#000' }}>{res.feedback}</p>
                                 </div>
                             )}
                             
-                            <div style={{ display: 'flex', gap: '3rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '3rem', borderTop: '1px solid #000', paddingTop: '1.5rem', color: '#000' }}>
                                 <div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: res.passed ? 'var(--success)' : 'var(--error)' }}>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#000' }}>
                                         {res.passed ? '✅ Pass' : '❌ Fail'}
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#000' }}>Status</div>
                                 </div>
                                 {res.evaluatedAt && (
                                     <div>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: '600' }}>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#000' }}>
                                             {new Date(res.evaluatedAt).toLocaleDateString()}
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Evaluated</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#000' }}>Evaluated</div>
                                     </div>
                                 )}
                                 {res.resultId && (
@@ -103,12 +116,12 @@ function ViewResults() {
                                                 href={`https://suiscan.xyz/testnet/object/${res.resultId}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+                                                style={{ color: '#000', textDecoration: 'underline' }}
                                             >
                                                 View on Explorer
                                             </a>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Blockchain Proof</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#000' }}>Blockchain Proof</div>
                                     </div>
                                 )}
                             </div>

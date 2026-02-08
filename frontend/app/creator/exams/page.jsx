@@ -9,7 +9,7 @@ export default function CreatorExamsPage() {
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
           Exams you have created. View and manage from the dashboard.
         </p>
-        <Link href="/creator" style={{ color: 'var(--primary)', fontWeight: 600 }}>← Back to Creator Dashboard</Link>
+        <Link href="/creator" style={{ color: 'var(--primary)', fontWeight: 600 }}>← Back to Faculty Dashboard</Link>
       </div>
     </ClientLayout>
   );

@@ -1,0 +1,28 @@
+/* Same tile hover effect as faculty/other dashboards: orange by default, white on hover */
+.student-dashboard .student-home-tile {
+  display: block;
+  text-decoration: none;
+  background: var(--orange-primary);
+  border: 2px solid #000;
+  color: #fff;
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  transition: background var(--transition-base), color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.student-dashboard .student-home-tile:hover {
+  background: #fff;
+  color: #000;
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.student-dashboard .student-home-tile h3,
+.student-dashboard .student-home-tile p {
+  color: inherit;
+}
+
+.student-dashboard .student-home-tile:hover h3,
+.student-dashboard .student-home-tile:hover p {
+  color: #000;
+}

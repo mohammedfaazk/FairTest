@@ -3,7 +3,7 @@ import CreatorDashboard from '../../src/pages/creator/Dashboard';
 
 export default function CreatorPage() {
   return (
-    <ClientLayout title="Creator Dashboard">
+    <ClientLayout title="Faculty Dashboard">
       <CreatorDashboard />
     </ClientLayout>
   );

@@ -9,7 +9,7 @@ export default function CreatorAnalyticsPage() {
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
           Exam performance and engagement metrics. Coming soon.
         </p>
-        <Link href="/creator" style={{ color: 'var(--primary)', fontWeight: 600 }}>← Back to Creator Dashboard</Link>
+        <Link href="/creator" style={{ color: 'var(--primary)', fontWeight: 600 }}>← Back to Faculty Dashboard</Link>
       </div>
     </ClientLayout>
   );
