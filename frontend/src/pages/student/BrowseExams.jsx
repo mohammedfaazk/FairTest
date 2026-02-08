@@ -68,7 +68,7 @@ function BrowseExams() {
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
                     <h2 style={{ marginBottom: '1rem' }}>No Exams Available Yet</h2>
                     <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-                        No exams have been created yet. Switch to Creator role to create your first exam!
+                        No exams have been created yet. Switch to Faculty role to create your first exam!
                     </p>
                     <button 
                         onClick={() => router.push('/creator/create')}
@@ -99,14 +99,24 @@ function BrowseExams() {
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
                     {exams.map(exam => (
-                        <div key={exam.examId} className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div
+                            key={exam.examId}
+                            className="glass-card"
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: 'white',
+                                border: '4px solid #000',
+                                color: '#000',
+                            }}
+                        >
                             {exam.ensDomain && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '600', marginBottom: '0.5rem' }}>{exam.ensDomain}</div>
+                                <div style={{ fontSize: '0.75rem', color: '#000', fontWeight: '600', marginBottom: '0.5rem' }}>{exam.ensDomain}</div>
                             )}
-                            <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem' }}>{exam.title}</h3>
+                            <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: '#000' }}>{exam.title}</h3>
                             <div style={{ marginTop: 'auto' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Fee:</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.875rem', color: '#000' }}>
+                                    <span>Fee:</span>
                                     <span style={{ fontWeight: '600' }}>{exam.fee} SUI</span>
                                 </div>
                                 <button
