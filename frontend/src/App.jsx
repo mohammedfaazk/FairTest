@@ -24,7 +24,7 @@ function App() {
 
     const getPageTitle = (path) => {
         const titles = {
-            '/creator': 'Creator Dashboard',
+            '/creator': 'Faculty Dashboard',
             '/creator/create': 'Create New Exam',
             '/creator/exams': 'My Exams',
             '/creator/analytics': 'Analytics',
@@ -45,7 +45,7 @@ function App() {
             <Route
                 path="/creator"
                 element={
-                    <MainLayout title="Creator Dashboard" role="creator" onRoleChange={setRole}>
+                    <MainLayout title="Faculty Dashboard" role="creator" onRoleChange={setRole}>
                         <CreatorDashboard />
                     </MainLayout>
                 }

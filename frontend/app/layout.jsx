@@ -1,6 +1,9 @@
 import './globals.css';
 import SuiProviders from './SuietProviders';
 
+// Avoid SSG for pages that use wallet (ConnectButton etc.) which can be undefined during prerender
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: 'FairTest Protocol',
   description: 'Decentralized exam platform with instant payments, anonymous evaluation, and immutable results',
