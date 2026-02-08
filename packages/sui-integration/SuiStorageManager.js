@@ -96,8 +96,7 @@ export default class SuiStorageManager {
     }
 
     get client() {
-        if (!this._client) {
-            this._requirePackageId();
+        if (!this._client && this.packageId) {
             this._client = new SuiClient({ url: this.rpcUrl });
         }
         return this._client;
@@ -301,9 +300,7 @@ export default class SuiStorageManager {
     }
 
     async getExam(examId) {
-        this._requirePackageId();
-        
-        // Try local storage first
+        // Try local storage first (no packageId needed)
         if (typeof window !== 'undefined' && window.localStorage) {
             const metadataKey = `fairtest_exam_${examId}`;
             const metadata = localStorage.getItem(metadataKey);
@@ -313,7 +310,8 @@ export default class SuiStorageManager {
             }
         }
         
-        // Fallback to blockchain (slower)
+        // Fallback to blockchain (requires packageId)
+        this._requirePackageId();
         console.log('[Sui] Loading exam from blockchain:', examId);
         const obj = await this.client.getObject({
             id: examId,
@@ -342,8 +340,6 @@ export default class SuiStorageManager {
     }
 
     async getAllExams() {
-        this._requirePackageId();
-        
         try {
             console.log('[Sui] Loading exams from local storage...');
             
@@ -463,9 +459,7 @@ export default class SuiStorageManager {
     }
 
     async getSubmission(submissionId) {
-        this._requirePackageId();
-        
-        // Try local storage first
+        // Try local storage first (no packageId needed)
         if (typeof window !== 'undefined' && window.localStorage) {
             const storageKey = `fairtest_submission_${submissionId}`;
             const stored = localStorage.getItem(storageKey);
@@ -486,7 +480,8 @@ export default class SuiStorageManager {
             }
         }
         
-        // Fallback to blockchain
+        // Fallback to blockchain (requires packageId)
+        this._requirePackageId();
         const obj = await this.client.getObject({
             id: submissionId,
             options: { showContent: true }
@@ -526,8 +521,6 @@ export default class SuiStorageManager {
     }
 
     async getPendingSubmissions(examId) {
-        this._requirePackageId();
-        
         console.log('[Sui] Getting pending submissions for exam:', examId);
         
         // Get all submissions from local storage
@@ -569,7 +562,7 @@ export default class SuiStorageManager {
         
         console.log('[Sui] Found', submissions.length, 'pending submissions');
         
-        // Get exam details
+        // Get exam details (getExam handles missing packageId via localStorage)
         const exam = await this.getExam(examId);
         
         return submissions.map(sub => ({
@@ -738,7 +731,6 @@ export default class SuiStorageManager {
     }
 
     async getStudentResults(studentFinalHash) {
-        this._requirePackageId();
         const results = [];
         
         console.log('[Sui] Getting results for finalHash:', studentFinalHash);
